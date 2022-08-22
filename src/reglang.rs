@@ -1,28 +1,28 @@
-struct Immediate {
+pub struct Immediate {
     value: i8,
     rs: i8,
     rd: i8,
 }
 
-struct Load {
+pub struct Load {
     offset: i8,
     rs: i8,
     rd: i8,
 }
 
-struct Store {
+pub struct Store {
     offset: i8,
     rs: i8,
     rd: i8,
 }
 
-struct Register {
+pub struct Register {
     rs1: i8,
     rs2: i8,
     rd: i8,
 }
 
-enum Instruction {
+pub enum Instruction {
     AddI(Immediate),
     SltI(Immediate),
     AndI(Immediate),
@@ -41,28 +41,28 @@ enum Instruction {
     Store(Store),
 }
 
-struct Memory {
+pub struct Memory {
     values: [i8; 64],
 }
 
-struct Processor {
+pub struct Processor {
     registers: [i8; 32],
 }
 
 impl Memory {
-    fn new() -> Memory {
+    pub fn new() -> Memory {
         Memory { values: [0; 64] }
     }
 }
 
 impl Processor {
-    fn new() -> Processor {
+    pub fn new() -> Processor {
         Processor { registers: [0; 32] }
     }
 }
 
 impl Instruction {
-    fn execute(&self, processor: &mut Processor, memory: &mut Memory) {
+    pub fn execute(&self, processor: &mut Processor, memory: &mut Memory) {
         match self {
             Instruction::AddI(immediate) => {
                 let rs = immediate.rs;
