@@ -1,25 +1,25 @@
 pub struct Immediate {
-    value: i8,
-    rs: i8,
-    rd: i8,
+    pub value: i8,
+    pub rs: i8,
+    pub rd: i8,
 }
 
 pub struct Load {
-    offset: i8,
-    rs: i8,
-    rd: i8,
+    pub offset: i8,
+    pub rs: i8,
+    pub rd: i8,
 }
 
 pub struct Store {
-    offset: i8,
-    rs: i8,
-    rd: i8,
+    pub offset: i8,
+    pub rs: i8,
+    pub rd: i8,
 }
 
 pub struct Register {
-    rs1: i8,
-    rs2: i8,
-    rd: i8,
+    pub rs1: i8,
+    pub rs2: i8,
+    pub rd: i8,
 }
 
 pub enum Instruction {
