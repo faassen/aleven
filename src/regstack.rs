@@ -303,6 +303,10 @@ impl Stack {
 }
 
 impl Assembler {
+    pub fn new() -> Assembler {
+        Assembler {}
+    }
+
     pub fn assemble_from_instructions(&self, instructions: &[Instruction]) -> Vec<i8> {
         let mut result = Stack::new();
         for instruction in instructions {
@@ -356,5 +360,16 @@ mod tests {
         let words = assembler.assemble("1 2 ADD");
         let text = assembler.line_disassemble(words.as_slice());
         assert_eq!(text, "1\n2\nADD");
+    }
+
+    #[test]
+    fn test_assemble_from_instructions() {
+        let assembler = Assembler::new();
+        let instructions = assembler.assemble_from_instructions(&[Instruction::AddI(Immediate {
+            value: 3,
+            rs: 2,
+            rd: 1,
+        })]);
+        assert_eq!(instructions, vec![3, 2, 1, StackInstr::ADDI as i8]);
     }
 }
