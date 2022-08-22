@@ -49,6 +49,10 @@ pub struct Processor {
     registers: [i8; 32],
 }
 
+pub struct Program {
+    instructions: Vec<Instruction>,
+}
+
 impl Memory {
     pub fn new() -> Memory {
         Memory { values: [0; 64] }
@@ -185,6 +189,14 @@ impl Instruction {
                 memory.values[(processor.registers[address as usize] + offset) as usize] =
                     processor.registers[rs as usize];
             }
+        }
+    }
+}
+
+impl Program {
+    pub fn execute(&self, processor: &mut Processor, memory: &mut Memory) {
+        for instruction in self.instructions.iter() {
+            instruction.execute(processor, memory);
         }
     }
 }
