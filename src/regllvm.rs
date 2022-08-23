@@ -45,6 +45,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::AndI(immediate) => self.jit_compile_andi(&mut registers, immediate),
                 Instruction::OrI(immediate) => self.jit_compile_ori(&mut registers, immediate),
                 Instruction::XorI(immediate) => self.jit_compile_xori(&mut registers, immediate),
+                Instruction::SllI(immediate) => self.jit_compile_slli(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Load(load) => {
                     self.jit_compile_load(&mut registers, ptr, load);
@@ -69,7 +70,7 @@ impl<'ctx> CodeGen<'ctx> {
         let i16_type = self.context.i16_type();
         let value = i16_type.const_int(immediate.value as u64, false);
         let rs = registers[immediate.rs as usize];
-        let result = f(&self.builder, value, rs);
+        let result = f(&self.builder, rs, value);
         registers[immediate.rd as usize] = result;
     }
 
@@ -81,7 +82,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn jit_compile_slti(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         self.jit_compile_immediate(registers, immediate, |builder, a, b| {
-            builder.build_int_compare(IntPredicate::SLT, b, a, "slti")
+            builder.build_int_compare(IntPredicate::SLT, a, b, "slti")
         });
     }
 
@@ -100,6 +101,12 @@ impl<'ctx> CodeGen<'ctx> {
     fn jit_compile_xori(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         self.jit_compile_immediate(registers, immediate, |builder, a, b| {
             builder.build_xor(a, b, "xori")
+        });
+    }
+
+    fn jit_compile_slli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_left_shift(a, b, "slli")
         });
     }
 
@@ -455,6 +462,30 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 0b0101110);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sll_immediate(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 5,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::SllI(Immediate {
+                value: 2,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 20);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
