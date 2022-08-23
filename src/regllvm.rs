@@ -206,6 +206,81 @@ mod tests {
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_add_immediate_register_has_value(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 10,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::AddI(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 43);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_add_immediate_register_rs_is_rd(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 10,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::AddI(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 0,
+                rd: 1, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 43);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_add_immediate_register_dec(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 10,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::AddI(Immediate {
+                value: -1,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 0,
+                rd: 1, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 9);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add(runner: Runner) {
         let instructions = [
             Instruction::AddI(Immediate {
