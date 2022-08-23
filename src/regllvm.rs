@@ -4,7 +4,7 @@ use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::values::{IntValue, PointerValue};
-use inkwell::{AddressSpace, OptimizationLevel};
+use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use std::error::Error;
 
 type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
@@ -41,6 +41,7 @@ impl<'ctx> CodeGen<'ctx> {
         for instruction in instructions {
             match instruction {
                 Instruction::AddI(immediate) => self.jit_compile_addi(&mut registers, immediate),
+                Instruction::SltI(immediate) => self.jit_compile_slti(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Load(load) => {
                     self.jit_compile_load(&mut registers, ptr, load);
@@ -58,11 +59,21 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn jit_compile_addi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         let i16_type = self.context.i16_type();
-        // XXX u64, how do negatives work?
+        // XXX u64, how do negatives work? need more tests?
         let value = i16_type.const_int(immediate.value as u64, false);
         let rs = registers[immediate.rs as usize];
         let sum = self.builder.build_int_add(value, rs, "addi");
         registers[immediate.rd as usize] = sum;
+    }
+
+    fn jit_compile_slti(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        let i16_type = self.context.i16_type();
+        let value = i16_type.const_int(immediate.value as u64, false);
+        let rs = registers[immediate.rs as usize];
+        let result = self
+            .builder
+            .build_int_compare(IntPredicate::SLT, rs, value, "slt");
+        registers[immediate.rd as usize] = result;
     }
 
     fn jit_compile_load(
@@ -278,6 +289,73 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 9);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_immediate_less(runner: Runner) {
+        let instructions = [
+            Instruction::SltI(Immediate {
+                value: 5,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 1);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_immediate_equal(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 5,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::SltI(Immediate {
+                value: 5,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_immediate_greater(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 6,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::SltI(Immediate {
+                value: 5,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
