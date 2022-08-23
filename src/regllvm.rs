@@ -42,6 +42,7 @@ impl<'ctx> CodeGen<'ctx> {
             match instruction {
                 Instruction::AddI(immediate) => self.jit_compile_addi(&mut registers, immediate),
                 Instruction::SltI(immediate) => self.jit_compile_slti(&mut registers, immediate),
+                Instruction::AndI(immediate) => self.jit_compile_andi(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Load(load) => {
                     self.jit_compile_load(&mut registers, ptr, load);
@@ -57,23 +58,35 @@ impl<'ctx> CodeGen<'ctx> {
         unsafe { self.execution_engine.get_function("program").ok() }
     }
 
-    fn jit_compile_addi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn jit_compile_immediate(
+        &self,
+        registers: &mut Registers<'ctx>,
+        immediate: &Immediate,
+        f: fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>,
+    ) {
         let i16_type = self.context.i16_type();
-        // XXX u64, how do negatives work? need more tests?
         let value = i16_type.const_int(immediate.value as u64, false);
         let rs = registers[immediate.rs as usize];
-        let sum = self.builder.build_int_add(value, rs, "addi");
-        registers[immediate.rd as usize] = sum;
+        let result = f(&self.builder, value, rs);
+        registers[immediate.rd as usize] = result;
+    }
+
+    fn jit_compile_addi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_int_add(a, b, "addi")
+        });
     }
 
     fn jit_compile_slti(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        let i16_type = self.context.i16_type();
-        let value = i16_type.const_int(immediate.value as u64, false);
-        let rs = registers[immediate.rs as usize];
-        let result = self
-            .builder
-            .build_int_compare(IntPredicate::SLT, rs, value, "slt");
-        registers[immediate.rd as usize] = result;
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_int_compare(IntPredicate::SLT, b, a, "slti")
+        });
+    }
+
+    fn jit_compile_andi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_and(b, a, "andi")
+        });
     }
 
     fn jit_compile_load(
@@ -356,6 +369,30 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_and_immediate(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 0b1010101,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::AndI(Immediate {
+                value: 0b1111110,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b1010100);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
