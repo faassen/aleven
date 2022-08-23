@@ -1,25 +1,25 @@
 pub struct Immediate {
-    pub value: i8,
-    pub rs: i8,
-    pub rd: i8,
+    pub value: i16,
+    pub rs: i16,
+    pub rd: i16,
 }
 
 pub struct Load {
-    pub offset: i8,
-    pub rs: i8,
-    pub rd: i8,
+    pub offset: i16,
+    pub rs: i16,
+    pub rd: i16,
 }
 
 pub struct Store {
-    pub offset: i8,
-    pub rs: i8,
-    pub rd: i8,
+    pub offset: i16,
+    pub rs: i16,
+    pub rd: i16,
 }
 
 pub struct Register {
-    pub rs1: i8,
-    pub rs2: i8,
-    pub rd: i8,
+    pub rs1: i16,
+    pub rs2: i16,
+    pub rd: i16,
 }
 
 pub enum Instruction {
@@ -46,7 +46,7 @@ pub struct Memory {
 }
 
 pub struct Processor {
-    registers: [i8; 32],
+    registers: [i16; 32],
 }
 
 pub struct Program {
@@ -180,14 +180,14 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let result = memory.values[(processor.registers[rs as usize] + offset) as usize];
-                processor.registers[rd as usize] = result;
+                processor.registers[rd as usize] = result as i16;
             }
             Instruction::Store(store) => {
                 let offset = store.offset;
                 let rs = store.rs;
                 let address = store.rd;
                 memory.values[(processor.registers[address as usize] + offset) as usize] =
-                    processor.registers[rs as usize];
+                    processor.registers[rs as usize] as i8;
             }
         }
     }

@@ -4,12 +4,8 @@ use rustc_hash::FxHashMap;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 
-// we have memory with i8s. We assemble instructions to stack instructions,
-// then from there into memory. We can take the memory and disassemble it and
-// turn it back into stack instructions. We can take a vec of stack
-// instructions and create instructions out of it to display or compile
-
-const INSTRUCTION_INDEX: isize = 128 - 32;
+const INSTRUCTION_INDEX: isize = -128;
+const INSTRUCTION_AMOUNT: isize = 32;
 
 #[allow(non_camel_case_types)]
 #[derive(EnumIter, Debug, Display, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
@@ -59,17 +55,17 @@ impl StackAssembler {
 
         for word in words {
             match self.instructions.get(word) {
-                // we can find the instruction, so we encode it as i8
                 Some(instruction) => {
                     result.push(instruction.encode());
                 }
-                // we can't find an instruction, so we store the i8 directly if
-                // it's < INSTRUCTION_INDEX, if larger we ignore it
                 None => {
                     // parse as number
                     match word.parse::<i8>() {
                         Ok(value) => {
-                            if isize::from(value) < INSTRUCTION_INDEX {
+                            let nr = isize::from(value);
+                            if !(INSTRUCTION_INDEX..INSTRUCTION_INDEX + INSTRUCTION_AMOUNT)
+                                .contains(&nr)
+                            {
                                 result.push(value)
                             }
                         }
@@ -94,7 +90,9 @@ impl StackAssembler {
         let mut result = Vec::new();
         for value in values {
             match *value {
-                v if isize::from(v) >= INSTRUCTION_INDEX => {
+                v if (INSTRUCTION_INDEX..INSTRUCTION_INDEX + INSTRUCTION_AMOUNT)
+                    .contains(&isize::from(v)) =>
+                {
                     let stack_instr = StackInstr::decode(v);
                     if let Some(stack_instr) = stack_instr {
                         result.push(Entry::Instr(stack_instr))
@@ -233,60 +231,66 @@ impl Stack {
         self.0.pop().unwrap_or(0)
     }
 
+    fn pop_i16(&mut self) -> i16 {
+        let low = self.pop();
+        let high = self.pop();
+        (high as i16) << 8 | (low as i16)
+    }
+
     fn pop_immediate(&mut self) -> Immediate {
         Immediate {
-            rd: self.pop(),
-            rs: self.pop(),
-            value: self.pop(),
+            rd: self.pop_i16(),
+            rs: self.pop_i16(),
+            value: self.pop_i16(),
         }
     }
 
     fn pop_register(&mut self) -> Register {
         Register {
-            rd: self.pop(),
-            rs2: self.pop(),
-            rs1: self.pop(),
+            rd: self.pop_i16(),
+            rs2: self.pop_i16(),
+            rs1: self.pop_i16(),
         }
     }
 
     fn pop_load(&mut self) -> Load {
         Load {
-            rd: self.pop(),
-            rs: self.pop(),
-            offset: self.pop(),
+            rd: self.pop_i16(),
+            rs: self.pop_i16(),
+            offset: self.pop_i16(),
         }
     }
 
     fn pop_store(&mut self) -> Store {
         Store {
-            rd: self.pop(),
-            rs: self.pop(),
-            offset: self.pop(),
+            rd: self.pop_i16(),
+            rs: self.pop_i16(),
+            offset: self.pop_i16(),
         }
     }
 
     fn push_immediate(&mut self, immediate: &Immediate) {
-        self.0.push(immediate.value);
-        self.0.push(immediate.rs);
-        self.0.push(immediate.rd);
+        self.push_i16(immediate.value);
+        self.push_i16(immediate.rs);
+        self.push_i16(immediate.rd);
     }
 
     fn push_register(&mut self, register: &Register) {
-        self.0.push(register.rs1);
-        self.0.push(register.rs2);
-        self.0.push(register.rd);
+        self.push_i16(register.rs1);
+        self.push_i16(register.rs2);
+        self.push_i16(register.rd);
     }
 
     fn push_load(&mut self, load: &Load) {
-        self.0.push(load.offset);
-        self.0.push(load.rs);
-        self.0.push(load.rd);
+        self.push_i16(load.offset);
+        self.push_i16(load.rs);
+        self.push_i16(load.rd);
     }
 
     fn push_store(&mut self, store: &Store) {
-        self.0.push(store.offset);
-        self.0.push(store.rs);
-        self.0.push(store.rd);
+        self.push_i16(store.offset);
+        self.push_i16(store.rs);
+        self.push_i16(store.rd);
     }
 
     fn push_instr(&mut self, instr: StackInstr) {
@@ -295,6 +299,13 @@ impl Stack {
 
     fn push(&mut self, value: i8) {
         self.0.push(value)
+    }
+
+    fn push_i16(&mut self, value: i16) {
+        let low = (value & 0xF) as i8;
+        let high = ((value >> 8) & 0xF) as i8;
+        self.push(high);
+        self.push(low);
     }
 
     fn to_vec(&self) -> Vec<i8> {
@@ -328,7 +339,7 @@ impl Assembler {
                     result.push(stack_instr.to_instruction(&mut stack));
                 }
                 Entry::Value(value) => {
-                    stack.0.push(value);
+                    stack.push(value);
                 }
             }
         }
@@ -350,16 +361,16 @@ mod tests {
     #[test]
     fn test_regstack_assemble() {
         let assembler = StackAssembler::new();
-        let words = assembler.assemble("1 2 ADD");
-        assert_eq!(words, vec![1, 2, StackInstr::ADD as i8]);
+        let words = assembler.assemble("0 1 0 2 0 3 ADD");
+        assert_eq!(words, vec![0, 1, 0, 2, 0, 3, StackInstr::ADD as i8]);
     }
 
     #[test]
     fn test_regstack_disassemble() {
         let assembler = StackAssembler::new();
-        let words = assembler.assemble("1 2 ADD");
+        let words = assembler.assemble("0 1 0 2 0 3 ADD");
         let text = assembler.line_disassemble(words.as_slice());
-        assert_eq!(text, "1\n2\nADD");
+        assert_eq!(text, "0\n1\n0\n2\n0\n3\nADD");
     }
 
     #[test]
@@ -370,6 +381,6 @@ mod tests {
             rs: 2,
             rd: 1,
         })]);
-        assert_eq!(instructions, vec![3, 2, 1, StackInstr::ADDI as i8]);
+        assert_eq!(instructions, vec![0, 3, 0, 2, 0, 1, StackInstr::ADDI as i8]);
     }
 }
