@@ -41,3 +41,11 @@ LOAD
 
 16 bit store with constant offset
 STORE
+
+## Formats
+
+register machine format - uses u16/i16
+
+register stack format - uses u16/i16 number, number, number instruction
+
+bytes format - 2 bytes, 2 bytes, 2 bytes, instruction byte, 7 bytes per instruction

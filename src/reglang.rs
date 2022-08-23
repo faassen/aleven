@@ -23,6 +23,7 @@ pub struct Register {
 }
 
 pub enum Instruction {
+    Nop(Immediate),
     AddI(Immediate),
     SltI(Immediate),
     AndI(Immediate),
@@ -68,6 +69,9 @@ impl Processor {
 impl Instruction {
     pub fn execute(&self, processor: &mut Processor, memory: &mut Memory) {
         match self {
+            Instruction::Nop(_) => {
+                // deliberately do nothing
+            }
             Instruction::AddI(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
