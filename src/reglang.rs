@@ -1,32 +1,32 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Immediate {
     pub value: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Load {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Store {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Register {
     pub rs1: i16,
     pub rs2: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
     AddI(Immediate),
     SltI(Immediate),
