@@ -47,7 +47,7 @@ impl<'ctx> CodeGen<'ctx> {
         for instruction in instructions {
             match instruction {
                 Instruction::AddI(immediate) => self.jit_compile_addi(&mut registers, immediate),
-                Instruction::Add(register) => {}
+                Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Load(load) => {
                     self.jit_compile_load(&mut registers, ptr, load);
                 }
@@ -99,7 +99,12 @@ impl<'ctx> CodeGen<'ctx> {
             .build_store(address, registers[store.rs as usize]);
     }
 
-    fn jit_compile_add(&self, registers: &Register) {}
+    fn jit_compile_add(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        let rs1 = registers[register.rs1 as usize];
+        let rs2 = registers[register.rs2 as usize];
+        let sum = self.builder.build_int_add(rs1, rs2, "add");
+        registers[register.rd as usize] = sum;
+    }
 
     fn jit_compile_sum(&self) -> Option<JitFunction<SumFunc>> {
         let i64_type = self.context.i64_type();
@@ -189,4 +194,92 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     // }
 
     // Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_codegen(context: &Context) -> CodeGen<'_> {
+        let module = context.create_module("program");
+        let execution_engine = module
+            .create_jit_execution_engine(OptimizationLevel::None)
+            .expect("Execution engine couldn't be built");
+        CodeGen {
+            context,
+            module,
+            builder: context.create_builder(),
+            execution_engine,
+        }
+    }
+
+    #[test]
+    fn test_add_immediate() {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+
+        let context = Context::create();
+        let codegen = create_codegen(&context);
+        let program = codegen
+            .jit_compile_program(&instructions)
+            .expect("Unable to JIT compile `program`");
+
+        let mut memory = [0u8; 64];
+
+        unsafe {
+            program.call(memory.as_mut_ptr());
+        }
+
+        assert_eq!(memory[10], 33);
+    }
+
+    #[test]
+    fn test_add() {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::AddI(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Add(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let context = Context::create();
+        let codegen = create_codegen(&context);
+        let program = codegen
+            .jit_compile_program(&instructions)
+            .expect("Unable to JIT compile `program`");
+
+        let mut memory = [0u8; 64];
+
+        unsafe {
+            program.call(memory.as_mut_ptr());
+        }
+
+        assert_eq!(memory[10], 77);
+    }
 }
