@@ -1,5 +1,5 @@
 // a simple stack language like interface on top of reglang
-use crate::reglang::{Immediate, Instruction, Load, Program, Register, Store};
+use crate::reglang::{Immediate, Instruction, Load, Register, Store};
 use byteorder::{ByteOrder, LittleEndian};
 use strum_macros::{Display, EnumIter};
 
@@ -221,11 +221,11 @@ impl ValueAssembler for Register {
 fn i16_to_bytes(value: i16) -> [u8; 2] {
     let mut buffer = [0u8; 2];
     LittleEndian::write_i16(&mut buffer, value);
-    return buffer;
+    buffer
 }
 
 fn bytes_to_i16(input: &[u8]) -> i16 {
-    return LittleEndian::read_i16(input);
+    LittleEndian::read_i16(input)
 }
 
 #[cfg(test)]
@@ -262,18 +262,4 @@ mod tests {
             })
         );
     }
-
-    // #[test]
-    // fn test_assemble_from_instructions() {
-    //     let assembler = Assembler::new();
-    //     let instructions = assembler.assemble_from_instructions(&[Instruction::AddI(Immediate {
-    //         value: 3,
-    //         rs: 2,
-    //         rd: 1,
-    //     })]);
-    //     assert_eq!(
-    //         instructions,
-    //         vec![3, 0, 2, 0, 1, 0, ByteInstr::ADDI.encode()]
-    //     );
-    // }
 }
