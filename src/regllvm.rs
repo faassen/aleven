@@ -145,6 +145,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::reglang::{Processor, Program};
+
     use super::*;
 
     fn create_codegen(context: &Context) -> CodeGen<'_> {
@@ -160,6 +162,25 @@ mod tests {
         }
     }
 
+    fn run_llvm(instructions: &[Instruction], memory: &mut [u8]) {
+        let context = Context::create();
+        let codegen = create_codegen(&context);
+        let program = codegen
+            .jit_compile_program(instructions)
+            .expect("Unable to JIT compile `program`");
+
+        unsafe {
+            program.call(memory.as_mut_ptr());
+        }
+    }
+
+    fn run_interpreter(instructions: &[Instruction], memory: &mut [u8]) {
+        let mut processor = Processor::new();
+        Program {
+            instructions: instructions.to_vec(),
+        }
+        .execute(&mut processor, memory);
+    }
     #[test]
     fn test_add_immediate() {
         let instructions = [
@@ -175,18 +196,12 @@ mod tests {
             }),
         ];
 
-        let context = Context::create();
-        let codegen = create_codegen(&context);
-        let program = codegen
-            .jit_compile_program(&instructions)
-            .expect("Unable to JIT compile `program`");
+        let mut memory = [0u8; 64];
+        run_llvm(&instructions, &mut memory);
+        assert_eq!(memory[10], 33);
 
         let mut memory = [0u8; 64];
-
-        unsafe {
-            program.call(memory.as_mut_ptr());
-        }
-
+        run_interpreter(&instructions, &mut memory);
         assert_eq!(memory[10], 33);
     }
 
@@ -215,18 +230,8 @@ mod tests {
             }),
         ];
 
-        let context = Context::create();
-        let codegen = create_codegen(&context);
-        let program = codegen
-            .jit_compile_program(&instructions)
-            .expect("Unable to JIT compile `program`");
-
         let mut memory = [0u8; 64];
-
-        unsafe {
-            program.call(memory.as_mut_ptr());
-        }
-
+        run_llvm(&instructions, &mut memory);
         assert_eq!(memory[10], 77);
     }
 }

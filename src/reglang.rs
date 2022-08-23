@@ -1,32 +1,32 @@
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Immediate {
     pub value: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Load {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Store {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Register {
     pub rs1: i16,
     pub rs2: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {
     AddI(Immediate),
     SltI(Immediate),
@@ -46,22 +46,12 @@ pub enum Instruction {
     Store(Store),
 }
 
-pub struct Memory {
-    values: [i8; 64],
-}
-
 pub struct Processor {
     registers: [i16; 32],
 }
 
 pub struct Program {
-    instructions: Vec<Instruction>,
-}
-
-impl Memory {
-    pub fn new() -> Memory {
-        Memory { values: [0; 64] }
-    }
+    pub instructions: Vec<Instruction>,
 }
 
 impl Processor {
@@ -71,7 +61,7 @@ impl Processor {
 }
 
 impl Instruction {
-    pub fn execute(&self, processor: &mut Processor, memory: &mut Memory) {
+    pub fn execute(&self, processor: &mut Processor, memory: &mut [u8]) {
         match self {
             Instruction::AddI(immediate) => {
                 let rs = immediate.rs;
@@ -184,22 +174,22 @@ impl Instruction {
                 let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
-                let result = memory.values[(processor.registers[rs as usize] + offset) as usize];
+                let result = memory[(processor.registers[rs as usize] + offset) as usize];
                 processor.registers[rd as usize] = result as i16;
             }
             Instruction::Store(store) => {
                 let offset = store.offset;
                 let rs = store.rs;
                 let address = store.rd;
-                memory.values[(processor.registers[address as usize] + offset) as usize] =
-                    processor.registers[rs as usize] as i8;
+                memory[(processor.registers[address as usize] + offset) as usize] =
+                    processor.registers[rs as usize] as u8;
             }
         }
     }
 }
 
 impl Program {
-    pub fn execute(&self, processor: &mut Processor, memory: &mut Memory) {
+    pub fn execute(&self, processor: &mut Processor, memory: &mut [u8]) {
         for instruction in self.instructions.iter() {
             instruction.execute(processor, memory);
         }
@@ -219,7 +209,7 @@ mod tests {
         });
 
         let mut processor = Processor::new();
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 5);
@@ -235,7 +225,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 10;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 15);
@@ -251,7 +241,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 10;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[1], 15);
@@ -267,7 +257,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 10;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[1], 9);
@@ -282,7 +272,7 @@ mod tests {
         });
 
         let mut processor = Processor::new();
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 1);
@@ -298,7 +288,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 5;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 0);
@@ -314,7 +304,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 6;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 0);
@@ -330,7 +320,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 0b1010101;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 0b1010100);
@@ -346,7 +336,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 0b1010100;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 0b1111110);
@@ -362,7 +352,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 0b1010100;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 0b0101110);
@@ -378,7 +368,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 5;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 20);
@@ -394,7 +384,7 @@ mod tests {
 
         let mut processor = Processor::new();
         processor.registers[1] = 20;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 5);
@@ -411,7 +401,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 10;
         processor.registers[2] = 20;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[3], 30);
@@ -428,7 +418,8 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 10;
         processor.registers[2] = -5;
-        let mut memory = Memory::new();
+
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[3], 5);
@@ -444,7 +435,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 10;
         processor.registers[2] = 20;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[3], 1);
@@ -459,7 +450,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 21;
         processor.registers[2] = 20;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[3], 0);
@@ -475,7 +466,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 0b1010101;
         processor.registers[2] = 0b1111110;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[3], 0b1010100);
@@ -491,7 +482,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 0b1010100;
         processor.registers[2] = 0b1111110;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[3], 0b1111110);
@@ -507,7 +498,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 0b1111010;
         processor.registers[2] = 0b1010100;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
         assert_eq!(processor.registers[3], 0b0101110);
     }
@@ -522,7 +513,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 0b101;
         processor.registers[2] = 2;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
         assert_eq!(processor.registers[3], 0b10100);
     }
@@ -537,7 +528,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 5;
         processor.registers[2] = 2;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
         assert_eq!(processor.registers[3], 20);
     }
@@ -552,7 +543,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 0b10100;
         processor.registers[2] = 2;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
         assert_eq!(processor.registers[3], 0b101);
     }
@@ -567,7 +558,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 20;
         processor.registers[2] = 2;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
         assert_eq!(processor.registers[3], 5);
     }
@@ -582,7 +573,7 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = -20;
         processor.registers[2] = 2;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
         instruction.execute(&mut processor, &mut memory);
         assert_eq!(processor.registers[3], -5);
     }
@@ -596,8 +587,8 @@ mod tests {
         });
         let mut processor = Processor::new();
         processor.registers[1] = 10;
-        let mut memory = Memory::new();
-        memory.values[10] = 20;
+        let mut memory = [0u8; 64];
+        memory[10] = 20;
         instruction.execute(&mut processor, &mut memory);
 
         assert_eq!(processor.registers[2], 20);
@@ -612,10 +603,10 @@ mod tests {
         });
         let mut processor = Processor::new();
         processor.registers[1] = 10;
-        let mut memory = Memory::new();
-        memory.values[10] = 20;
-        memory.values[11] = 30;
-        memory.values[12] = 40;
+        let mut memory = [0u8; 64];
+        memory[10] = 20;
+        memory[11] = 30;
+        memory[12] = 40;
 
         instruction.execute(&mut processor, &mut memory);
 
@@ -633,11 +624,11 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 20;
         processor.registers[2] = 10;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
 
         instruction.execute(&mut processor, &mut memory);
 
-        assert_eq!(memory.values[10], 20);
+        assert_eq!(memory[10], 20);
     }
 
     #[test]
@@ -651,10 +642,10 @@ mod tests {
         let mut processor = Processor::new();
         processor.registers[1] = 20;
         processor.registers[2] = 10;
-        let mut memory = Memory::new();
+        let mut memory = [0u8; 64];
 
         instruction.execute(&mut processor, &mut memory);
 
-        assert_eq!(memory.values[12], 20);
+        assert_eq!(memory[12], 20);
     }
 }
