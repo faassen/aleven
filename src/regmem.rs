@@ -42,6 +42,8 @@ impl Assembler {
         result
     }
 
+    // XXX we could change the in memory format to be closer to a register
+    // format, where we put all the information *after* the instruction
     pub fn disassemble(&self, values: &[u8]) -> Vec<Instruction> {
         let mut result = Vec::new();
         let mut index: usize = 0;
