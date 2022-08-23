@@ -43,6 +43,8 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::AddI(immediate) => self.jit_compile_addi(&mut registers, immediate),
                 Instruction::SltI(immediate) => self.jit_compile_slti(&mut registers, immediate),
                 Instruction::AndI(immediate) => self.jit_compile_andi(&mut registers, immediate),
+                Instruction::OrI(immediate) => self.jit_compile_ori(&mut registers, immediate),
+                Instruction::XorI(immediate) => self.jit_compile_xori(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Load(load) => {
                     self.jit_compile_load(&mut registers, ptr, load);
@@ -85,7 +87,19 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn jit_compile_andi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         self.jit_compile_immediate(registers, immediate, |builder, a, b| {
-            builder.build_and(b, a, "andi")
+            builder.build_and(a, b, "andi")
+        });
+    }
+
+    fn jit_compile_ori(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_or(a, b, "ori")
+        });
+    }
+
+    fn jit_compile_xori(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_xor(a, b, "xori")
         });
     }
 
@@ -393,6 +407,54 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 0b1010100);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_or_immediate(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 0b1010100,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::OrI(Immediate {
+                value: 0b1111110,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b1111110);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_xor_immediate(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 0b1010100,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::XorI(Immediate {
+                value: 0b1111010,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b0101110);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
