@@ -10,7 +10,4 @@ inkwell = { version = "0.1.0-beta.4", features = ["llvm13-0"] }
 num = "0.4"
 num-traits = "0.2"
 num-derive = "0.3"
-strum = "0.24"
-strum_macros = "0.24"
-rustc-hash = "1.1.0"
 byteorder = "1.4.3"

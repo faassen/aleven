@@ -1,10 +1,9 @@
 // a simple stack language like interface on top of reglang
 use crate::reglang::{Immediate, Instruction, Load, Register, Store};
 use byteorder::{ByteOrder, LittleEndian};
-use strum_macros::{Display, EnumIter};
 
 #[allow(non_camel_case_types)]
-#[derive(EnumIter, Debug, Display, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
 pub enum ByteInstr {
     ADDI,
     SLTI,
