@@ -1,4 +1,3 @@
-// a simple stack language like interface on top of reglang
 use crate::reglang::{Immediate, Instruction, Load, Register, Store};
 use byteorder::{ByteOrder, LittleEndian};
 
