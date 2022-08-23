@@ -262,4 +262,13 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn test_regstack_disassemble_invalid_instruction() {
+        // 127 isn't going to be a valid instruction soon
+        let bytes = vec![0, 0, 1, 0, 2, 0, 127];
+        let assembler = Assembler::new();
+        let instructions = assembler.disassemble(&bytes);
+        assert_eq!(instructions.len(), 0);
+    }
 }
