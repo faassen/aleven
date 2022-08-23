@@ -1,29 +1,33 @@
+#[derive(Debug, PartialEq)]
 pub struct Immediate {
     pub value: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Load {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Store {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Register {
     pub rs1: i16,
     pub rs2: i16,
     pub rd: i16,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Instruction {
-    Nop(Immediate),
     AddI(Immediate),
     SltI(Immediate),
     AndI(Immediate),
@@ -69,9 +73,6 @@ impl Processor {
 impl Instruction {
     pub fn execute(&self, processor: &mut Processor, memory: &mut Memory) {
         match self {
-            Instruction::Nop(_) => {
-                // deliberately do nothing
-            }
             Instruction::AddI(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;

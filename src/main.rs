@@ -4,7 +4,7 @@ extern crate num_derive;
 
 mod iw;
 mod reglang;
-mod regstack;
+mod regmem;
 
 fn main() {
     println!("Hello, world!");
