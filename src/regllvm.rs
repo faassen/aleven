@@ -146,6 +146,9 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
     use crate::reglang::{Processor, Program};
+    use parameterized::parameterized;
+
+    type Runner = fn(&[Instruction], &mut [u8]);
 
     use super::*;
 
@@ -181,8 +184,9 @@ mod tests {
         }
         .execute(&mut processor, memory);
     }
-    #[test]
-    fn test_add_immediate() {
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_add_immediate(runner: Runner) {
         let instructions = [
             Instruction::AddI(Immediate {
                 value: 33,
@@ -197,16 +201,12 @@ mod tests {
         ];
 
         let mut memory = [0u8; 64];
-        run_llvm(&instructions, &mut memory);
-        assert_eq!(memory[10], 33);
-
-        let mut memory = [0u8; 64];
-        run_interpreter(&instructions, &mut memory);
+        runner(&instructions, &mut memory);
         assert_eq!(memory[10], 33);
     }
 
-    #[test]
-    fn test_add() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_add(runner: Runner) {
         let instructions = [
             Instruction::AddI(Immediate {
                 value: 33,
@@ -231,7 +231,7 @@ mod tests {
         ];
 
         let mut memory = [0u8; 64];
-        run_llvm(&instructions, &mut memory);
+        runner(&instructions, &mut memory);
         assert_eq!(memory[10], 77);
     }
 }
