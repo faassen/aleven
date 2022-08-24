@@ -89,7 +89,7 @@ impl ByteInstr {
                 immediate.assemble(output);
                 output.push(ByteInstr::XORI.encode());
             }
-            Instruction::slli(immediate) => {
+            Instruction::Slli(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::SLLI.encode());
             }
@@ -144,7 +144,7 @@ impl ByteInstr {
             ByteInstr::ANDI => Instruction::Andi(Immediate::disassemble(values)),
             ByteInstr::ORI => Instruction::Ori(Immediate::disassemble(values)),
             ByteInstr::XORI => Instruction::Xori(Immediate::disassemble(values)),
-            ByteInstr::SLLI => Instruction::slli(Immediate::disassemble(values)),
+            ByteInstr::SLLI => Instruction::Slli(Immediate::disassemble(values)),
             ByteInstr::SRAI => Instruction::Srai(Immediate::disassemble(values)),
             ByteInstr::ADD => Instruction::Add(Register::disassemble(values)),
             ByteInstr::SLT => Instruction::Slt(Register::disassemble(values)),

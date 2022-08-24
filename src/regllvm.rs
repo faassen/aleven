@@ -48,7 +48,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::Andi(immediate) => self.jit_compile_andi(&mut registers, immediate),
                 Instruction::Ori(immediate) => self.jit_compile_ori(&mut registers, immediate),
                 Instruction::Xori(immediate) => self.jit_compile_xori(&mut registers, immediate),
-                Instruction::slli(immediate) => self.jit_compile_slli(&mut registers, immediate),
+                Instruction::Slli(immediate) => self.jit_compile_slli(&mut registers, immediate),
                 Instruction::Srli(immediate) => self.jit_compile_srli(&mut registers, immediate),
                 Instruction::Srai(immediate) => self.jit_compile_srai(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
@@ -582,7 +582,7 @@ mod tests {
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::slli(Immediate {
+            Instruction::Slli(Immediate {
                 value: 2,
                 rs: 0,
                 rd: 1,

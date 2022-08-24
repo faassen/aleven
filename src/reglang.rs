@@ -36,7 +36,7 @@ pub enum Instruction {
     Andi(Immediate),
     Ori(Immediate),
     Xori(Immediate),
-    slli(Immediate),
+    Slli(Immediate),
     Srli(Immediate),
     Srai(Immediate),
     Add(Register),
@@ -120,7 +120,7 @@ impl Instruction {
                 let result = processor.registers[rs as usize] ^ value;
                 processor.registers[rd as usize] = result;
             }
-            Instruction::slli(immediate) => {
+            Instruction::Slli(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
@@ -407,7 +407,7 @@ mod tests {
 
     #[test]
     fn test_sll_immediate() {
-        let instruction = Instruction::slli(Immediate {
+        let instruction = Instruction::Slli(Immediate {
             value: 2,
             rs: 1,
             rd: 2,
