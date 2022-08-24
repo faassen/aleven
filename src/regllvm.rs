@@ -1429,6 +1429,36 @@ mod tests {
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sll_shift_too_large(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b101,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 100,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sll(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_srl(runner: Runner) {
         let instructions = [
             Instruction::Addi(Immediate {
@@ -1456,6 +1486,36 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 0b101);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_srl_too_large(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b10100,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 100,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Srl(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]

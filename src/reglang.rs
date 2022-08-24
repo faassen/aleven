@@ -127,21 +127,33 @@ impl Instruction {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
-                let result = processor.registers[rs as usize] << value;
+                let result = if value < 16 {
+                    processor.registers[rs as usize] << value
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result;
             }
             Instruction::Srli(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
-                let result = (processor.registers[rs as usize] as u16) >> value;
+                let result = if value < 16 {
+                    (processor.registers[rs as usize] as u16) >> value
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result as i16;
             }
             Instruction::Srai(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
-                let result = processor.registers[rs as usize] >> value;
+                let result = if value < 16 {
+                    processor.registers[rs as usize] >> value
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result;
             }
             Instruction::Add(register) => {
@@ -210,22 +222,33 @@ impl Instruction {
                 let rs1 = register.rs1;
                 let rs2 = register.rs2;
                 let rd = register.rd;
-                let result = processor.registers[rs1 as usize] << processor.registers[rs2 as usize];
+                let result = if processor.registers[rs2 as usize] < 16 {
+                    processor.registers[rs1 as usize] << processor.registers[rs2 as usize]
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result;
             }
             Instruction::Srl(register) => {
                 let rs1 = register.rs1;
                 let rs2 = register.rs2;
                 let rd = register.rd;
-                let result =
-                    (processor.registers[rs1 as usize] as u16) >> processor.registers[rs2 as usize];
+                let result = if processor.registers[rs2 as usize] < 16 {
+                    (processor.registers[rs1 as usize] as u16) >> processor.registers[rs2 as usize]
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result as i16;
             }
             Instruction::Sra(register) => {
                 let rs1 = register.rs1;
                 let rs2 = register.rs2;
                 let rd = register.rd;
-                let result = processor.registers[rs1 as usize] >> processor.registers[rs2 as usize];
+                let result = if processor.registers[rs2 as usize] < 16 {
+                    processor.registers[rs1 as usize] >> processor.registers[rs2 as usize]
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result;
             }
             Instruction::Lh(load) => {
