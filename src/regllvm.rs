@@ -1,4 +1,4 @@
-use crate::reglang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
+use crate::reglang::{Branch, Immediate, Instruction, Load, Register, Store};
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -7,7 +7,7 @@ use inkwell::module::Module;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
-use inkwell::values::{FunctionValue, IntMathValue, IntValue, PointerValue};
+use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
 use std::error::Error;
