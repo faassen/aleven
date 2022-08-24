@@ -42,15 +42,13 @@ impl Assembler {
         result
     }
 
-    // XXX we could change the in memory format to be closer to a register
-    // format, where we put all the information *after* the instruction
     pub fn disassemble(&self, values: &[u8]) -> Vec<Instruction> {
         let mut result = Vec::new();
         let mut index: usize = 0;
         while index < values.len() {
             let instruction_values = &values[index..index + 7];
-            if let Some(byte_instr) = ByteInstr::decode(instruction_values[6]) {
-                result.push(byte_instr.disassemble(instruction_values));
+            if let Some(byte_instr) = ByteInstr::decode(instruction_values[0]) {
+                result.push(byte_instr.disassemble(&instruction_values[1..]));
             }
             index += 7;
         }
@@ -70,68 +68,68 @@ impl ByteInstr {
     fn assemble(instruction: &Instruction, output: &mut Vec<u8>) {
         match instruction {
             Instruction::Addi(immediate) => {
-                immediate.assemble(output);
                 output.push(ByteInstr::ADDI.encode());
+                immediate.assemble(output);
             }
             Instruction::Slti(immediate) => {
-                immediate.assemble(output);
                 output.push(ByteInstr::SLTI.encode());
+                immediate.assemble(output);
             }
             Instruction::Andi(immediate) => {
-                immediate.assemble(output);
                 output.push(ByteInstr::ANDI.encode());
+                immediate.assemble(output);
             }
             Instruction::Ori(immediate) => {
-                immediate.assemble(output);
                 output.push(ByteInstr::ORI.encode());
+                immediate.assemble(output);
             }
             Instruction::Xori(immediate) => {
-                immediate.assemble(output);
                 output.push(ByteInstr::XORI.encode());
+                immediate.assemble(output);
             }
             Instruction::Slli(immediate) => {
-                immediate.assemble(output);
                 output.push(ByteInstr::SLLI.encode());
+                immediate.assemble(output);
             }
             Instruction::Srai(immediate) => {
-                immediate.assemble(output);
                 output.push(ByteInstr::SRAI.encode());
+                immediate.assemble(output);
             }
             Instruction::Add(register) => {
-                register.assemble(output);
                 output.push(ByteInstr::ADD.encode());
+                register.assemble(output);
             }
             Instruction::Slt(register) => {
-                register.assemble(output);
                 output.push(ByteInstr::SLT.encode());
+                register.assemble(output);
             }
             Instruction::And(register) => {
-                register.assemble(output);
                 output.push(ByteInstr::AND.encode());
+                register.assemble(output);
             }
             Instruction::Or(register) => {
-                register.assemble(output);
                 output.push(ByteInstr::OR.encode());
+                register.assemble(output);
             }
             Instruction::Xor(register) => {
-                register.assemble(output);
                 output.push(ByteInstr::XOR.encode());
+                register.assemble(output);
             }
             Instruction::Sll(register) => {
-                register.assemble(output);
                 output.push(ByteInstr::SLL.encode());
+                register.assemble(output);
             }
             Instruction::Sra(register) => {
-                register.assemble(output);
                 output.push(ByteInstr::SRA.encode());
+                register.assemble(output);
             }
             Instruction::Lb(load) => {
-                load.assemble(output);
                 output.push(ByteInstr::LB.encode());
+                load.assemble(output);
             }
             Instruction::Sb(store) => {
-                store.assemble(output);
                 output.push(ByteInstr::SB.encode());
+                store.assemble(output);
             }
             _ => {}
         }
@@ -234,18 +232,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_regstack_assemble() {
+    fn test_assemble() {
         let assembler = Assembler::new();
         let bytes = assembler.assemble(&[Instruction::Add(Register {
             rs1: 0,
             rs2: 1,
             rd: 2,
         })]);
-        assert_eq!(bytes, vec![0, 0, 1, 0, 2, 0, ByteInstr::ADD.encode()]);
+        assert_eq!(bytes, vec![ByteInstr::ADD.encode(), 0, 0, 1, 0, 2, 0]);
     }
 
     #[test]
-    fn test_regstack_disassemble() {
+    fn test_disassemble() {
         let assembler = Assembler::new();
         let bytes = assembler.assemble(&[Instruction::Add(Register {
             rs1: 0,
@@ -265,9 +263,9 @@ mod tests {
     }
 
     #[test]
-    fn test_regstack_disassemble_invalid_instruction() {
+    fn test_disassemble_invalid_instruction() {
         // 127 isn't going to be a valid instruction soon
-        let bytes = vec![0, 0, 1, 0, 2, 0, 127];
+        let bytes = vec![127, 0, 0, 1, 0, 2, 0];
         let assembler = Assembler::new();
         let instructions = assembler.disassemble(&bytes);
         assert_eq!(instructions.len(), 0);
