@@ -520,8 +520,8 @@ mod tests {
         assert_eq!(memory[10], 5);
     }
 
-    #[test]
-    fn test_lb() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lb(runner: Runner) {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
@@ -536,7 +536,7 @@ mod tests {
         ];
         let mut memory = [0u8; 64];
         memory[0] = 11;
-        run_interpreter(&instructions, &mut memory);
+        runner(&instructions, &mut memory);
         assert_eq!(memory[10], 11);
     }
 
