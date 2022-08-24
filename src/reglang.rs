@@ -1,3 +1,5 @@
+use byteorder::{ByteOrder, LittleEndian};
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Immediate {
     pub value: i16,
@@ -34,6 +36,7 @@ pub enum Instruction {
     OrI(Immediate),
     XorI(Immediate),
     SllI(Immediate),
+    SrlI(Immediate),
     SraI(Immediate),
     Add(Register),
     Slt(Register),
@@ -112,6 +115,13 @@ impl Instruction {
                 let result = processor.registers[rs as usize] << value;
                 processor.registers[rd as usize] = result;
             }
+            Instruction::SrlI(immediate) => {
+                let rs = immediate.rs;
+                let rd = immediate.rd;
+                let value = immediate.value;
+                let result = (processor.registers[rs as usize] as u16) >> value;
+                processor.registers[rd as usize] = result as i16;
+            }
             Instruction::SraI(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
@@ -177,36 +187,37 @@ impl Instruction {
                 let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
-                let result = memory[(processor.registers[rs as usize] + offset) as usize];
-                processor.registers[rd as usize] = result as i16;
+                let address = (processor.registers[rs as usize] + offset) as usize; //  & 0xfffe;
+                let value = LittleEndian::read_i16(&memory[address..]);
+                processor.registers[rd as usize] = value;
             }
             Instruction::Lb(load) => {
                 let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
                 let result = memory[(processor.registers[rs as usize] + offset) as usize];
-                processor.registers[rd as usize] = result as i16;
+                processor.registers[rd as usize] = result as i8 as i16;
             }
             Instruction::Lbu(load) => {
                 let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
                 let result = memory[(processor.registers[rs as usize] + offset) as usize];
-                processor.registers[rd as usize] = result as i16;
+                processor.registers[rd as usize] = result as u16 as i16;
             }
             Instruction::Sh(store) => {
                 let offset = store.offset;
                 let rs = store.rs;
-                let address = store.rd;
-                memory[(processor.registers[address as usize] + offset) as usize] =
-                    processor.registers[rs as usize] as u8;
+                let rd = store.rd;
+                let address = (processor.registers[rd as usize] + offset) as usize; //  & 0xfffe;
+                LittleEndian::write_i16(&mut memory[address..], processor.registers[rs as usize]);
             }
             Instruction::Sb(store) => {
                 let offset = store.offset;
                 let rs = store.rs;
-                let address = store.rd;
-                memory[(processor.registers[address as usize] + offset) as usize] =
-                    processor.registers[rs as usize] as u8;
+                let rd = store.rd;
+                let address = (processor.registers[rd as usize] + offset) as usize;
+                memory[address] = processor.registers[rs as usize] as u8;
             }
         }
     }
@@ -603,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load() {
+    fn test_lb() {
         let instruction = Instruction::Lb(Load {
             offset: 0,
             rs: 1,
@@ -619,7 +630,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_offset() {
+    fn test_lb_offset() {
         let instruction = Instruction::Lb(Load {
             offset: 2,
             rs: 1,
@@ -638,7 +649,7 @@ mod tests {
     }
 
     #[test]
-    fn test_store() {
+    fn test_sb() {
         let instruction = Instruction::Sb(Store {
             offset: 0,
             rs: 1,
@@ -656,7 +667,7 @@ mod tests {
     }
 
     #[test]
-    fn test_store_offset() {
+    fn test_sb_offset() {
         let instruction = Instruction::Sb(Store {
             offset: 2,
             rs: 1,

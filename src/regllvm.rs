@@ -198,6 +198,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
     use crate::reglang::{Processor, Program};
+    use byteorder::{ByteOrder, LittleEndian};
     use parameterized::parameterized;
 
     type Runner = fn(&[Instruction], &mut [u8]);
@@ -520,35 +521,125 @@ mod tests {
     }
 
     #[test]
-    fn test_sign() {
-        let i: i16 = -1;
-        let u = i as u16;
-        assert_eq!(u, 0xffff);
-        assert_eq!(u >> 2, 0x3fff);
+    fn test_lb() {
+        let instructions = [
+            Instruction::Lb(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = 11;
+        run_interpreter(&instructions, &mut memory);
+        assert_eq!(memory[10], 11);
     }
 
-    // #[parameterized(runner={run_llvm, run_interpreter})]
-    // fn test_sra_immediate_is_logical(runner: Runner) {
-    //     let instructions = [
-    //         Instruction::AddI(Immediate {
-    //             value: -1,
-    //             rs: 0,
-    //             rd: 0,
-    //         }),
-    //         Instruction::SraI(Immediate {
-    //             value: 2,
-    //             rs: 0,
-    //             rd: 1,
-    //         }),
-    //         Instruction::Sb(Store {
-    //             offset: 10,
-    //             rs: 1,
-    //             rd: 2, // defaults to 0
-    //         }),
-    //     ];
-    //     let mut memory = [0u8; 64];
-    //     runner(&instructions, &mut memory);
-    // }
+    #[test]
+    fn test_lh_sh() {
+        let instructions = [
+            Instruction::Lh(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = 2;
+        memory[1] = 1;
+        run_interpreter(&instructions, &mut memory);
+        assert_eq!(memory[10], 2);
+        assert_eq!(memory[11], 1);
+    }
+
+    #[test]
+    fn test_lb_sign_extends() {
+        let instructions = [
+            Instruction::Lb(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::SraI(Immediate {
+                value: 2,
+                rs: 1,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = -4i8 as u8; // FFFC
+        run_interpreter(&instructions, &mut memory);
+        let value = LittleEndian::read_i16(&memory[10..]);
+        assert_eq!(value, -1);
+        assert_eq!(value, 0xFFFFu16 as i16);
+    }
+
+    #[test]
+    fn test_lbu_zero_extends() {
+        let instructions = [
+            Instruction::Lbu(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::SraI(Immediate {
+                value: 2,
+                rs: 1,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = 0b11111111;
+        run_interpreter(&instructions, &mut memory);
+        let value = LittleEndian::read_u16(&memory[10..]);
+        assert_eq!(value, 0b111111);
+    }
+
+    #[test]
+    fn test_srli_zero_extends() {
+        let instructions = [
+            Instruction::Lb(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::SrlI(Immediate {
+                value: 2,
+                rs: 1,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = -1i8 as u8;
+        run_interpreter(&instructions, &mut memory);
+        let value = LittleEndian::read_u16(&memory[10..]);
+        assert_eq!(value, 0b11111111111111);
+    }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add(runner: Runner) {
