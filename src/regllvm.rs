@@ -52,11 +52,15 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::Srli(immediate) => self.jit_compile_srli(&mut registers, immediate),
                 Instruction::Srai(immediate) => self.jit_compile_srai(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
+                Instruction::Sub(register) => self.jit_compile_sub(&mut registers, register),
                 Instruction::Slt(register) => self.jit_compile_slt(&mut registers, register),
                 Instruction::Sltu(register) => self.jit_compile_sltu(&mut registers, register),
                 Instruction::And(register) => self.jit_compile_and(&mut registers, register),
                 Instruction::Or(register) => self.jit_compile_or(&mut registers, register),
                 Instruction::Xor(register) => self.jit_compile_xor(&mut registers, register),
+                Instruction::Sll(register) => self.jit_compile_sll(&mut registers, register),
+                Instruction::Srl(register) => self.jit_compile_srl(&mut registers, register),
+                Instruction::Sra(register) => self.jit_compile_sra(&mut registers, register),
                 Instruction::Lb(load) => {
                     self.jit_compile_lb(&mut registers, ptr, load);
                 }
@@ -146,7 +150,68 @@ impl<'ctx> CodeGen<'ctx> {
             builder.build_right_shift(a, b, true, "srai")
         });
     }
+    fn jit_compile_register(
+        &self,
+        registers: &mut Registers<'ctx>,
+        register: &Register,
+        f: Build2<'ctx>,
+    ) {
+        let rs1 = registers[register.rs1 as usize];
+        let rs2 = registers[register.rs2 as usize];
+        let result = f(&self.builder, rs1, rs2);
+        registers[register.rd as usize] = result;
+    }
 
+    fn jit_compile_add(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_int_add(a, b, "add")
+        });
+    }
+    fn jit_compile_sub(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_int_sub(a, b, "sub")
+        });
+    }
+    fn jit_compile_slt(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_int_compare(IntPredicate::SLT, a, b, "slt")
+        });
+    }
+    fn jit_compile_sltu(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_int_compare(IntPredicate::ULT, a, b, "sltu")
+        });
+    }
+    fn jit_compile_and(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_and(a, b, "and")
+        });
+    }
+    fn jit_compile_or(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_or(a, b, "and")
+        });
+    }
+    fn jit_compile_xor(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_xor(a, b, "and")
+        });
+    }
+    fn jit_compile_sll(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_left_shift(a, b, "and")
+        });
+    }
+    fn jit_compile_srl(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_right_shift(a, b, false, "and")
+        });
+    }
+    fn jit_compile_sra(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_right_shift(a, b, true, "and")
+        });
+    }
     fn jit_compile_lb(
         &self,
         registers: &mut Registers<'ctx>,
@@ -232,51 +297,6 @@ impl<'ctx> CodeGen<'ctx> {
         let address = unsafe { self.builder.build_gep(i16_ptr, &[index], "gep index") };
         self.builder
             .build_store(address, registers[store.rs as usize]);
-    }
-
-    fn jit_compile_register(
-        &self,
-        registers: &mut Registers<'ctx>,
-        register: &Register,
-        f: Build2<'ctx>,
-    ) {
-        let rs1 = registers[register.rs1 as usize];
-        let rs2 = registers[register.rs2 as usize];
-        let result = f(&self.builder, rs1, rs2);
-        registers[register.rd as usize] = result;
-    }
-
-    fn jit_compile_add(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
-            builder.build_int_add(a, b, "add")
-        });
-    }
-
-    fn jit_compile_slt(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
-            builder.build_int_compare(IntPredicate::SLT, a, b, "slt")
-        });
-    }
-
-    fn jit_compile_sltu(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
-            builder.build_int_compare(IntPredicate::ULT, a, b, "sltu")
-        });
-    }
-    fn jit_compile_and(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
-            builder.build_and(a, b, "and")
-        });
-    }
-    fn jit_compile_or(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
-            builder.build_or(a, b, "and")
-        });
-    }
-    fn jit_compile_xor(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
-            builder.build_xor(a, b, "and")
-        });
     }
 }
 
@@ -957,6 +977,67 @@ mod tests {
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sub(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 11,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sub(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 22);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_add_wrapping(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: i16::MAX,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 1,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Add(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_i16(&memory[20..]);
+        assert_eq!(value, i16::MIN);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add_sh(runner: Runner) {
         let instructions = [
             Instruction::Addi(Immediate {
@@ -1315,5 +1396,157 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 0b0101110);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sll(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b101,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 2,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sll(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b10100);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_srl(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b10100,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 2,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Srl(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b101);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_srl_negative(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: -20,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 2,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Srl(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_i16(&memory[20..]);
+        assert_eq!(value, 16379);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sra(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b10100,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 2,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sra(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b101);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sra_negative(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: -20,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 2,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sra(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_i16(&memory[20..]);
+        assert_eq!(value, -5);
     }
 }

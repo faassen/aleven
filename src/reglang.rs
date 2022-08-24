@@ -40,12 +40,14 @@ pub enum Instruction {
     Srli(Immediate),
     Srai(Immediate),
     Add(Register),
+    Sub(Register),
     Slt(Register),
     Sltu(Register),
     And(Register),
     Or(Register),
     Xor(Register),
     Sll(Register),
+    Srl(Register),
     Sra(Register),
     Lh(Load),
     Lb(Load),
@@ -146,7 +148,16 @@ impl Instruction {
                 let rs1 = register.rs1;
                 let rs2 = register.rs2;
                 let rd = register.rd;
-                let result = processor.registers[rs1 as usize] + processor.registers[rs2 as usize];
+                let result = processor.registers[rs1 as usize]
+                    .wrapping_add(processor.registers[rs2 as usize]);
+                processor.registers[rd as usize] = result;
+            }
+            Instruction::Sub(register) => {
+                let rs1 = register.rs1;
+                let rs2 = register.rs2;
+                let rd = register.rd;
+                let result = processor.registers[rs1 as usize]
+                    .wrapping_sub(processor.registers[rs2 as usize]);
                 processor.registers[rd as usize] = result;
             }
             Instruction::Slt(register) => {
@@ -201,6 +212,14 @@ impl Instruction {
                 let rd = register.rd;
                 let result = processor.registers[rs1 as usize] << processor.registers[rs2 as usize];
                 processor.registers[rd as usize] = result;
+            }
+            Instruction::Srl(register) => {
+                let rs1 = register.rs1;
+                let rs2 = register.rs2;
+                let rd = register.rd;
+                let result =
+                    (processor.registers[rs1 as usize] as u16) >> processor.registers[rs2 as usize];
+                processor.registers[rd as usize] = result as i16;
             }
             Instruction::Sra(register) => {
                 let rs1 = register.rs1;
