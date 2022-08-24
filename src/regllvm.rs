@@ -3,6 +3,9 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
+use inkwell::targets::{
+    CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
+};
 use inkwell::values::{IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use std::error::Error;
@@ -80,6 +83,9 @@ impl<'ctx> CodeGen<'ctx> {
             }
         }
         self.builder.build_return(None);
+
+        // self.module.print_to_stderr();
+        // save_asm(&self.module)
 
         unsafe { self.execution_engine.get_function("program").ok() }
     }
@@ -300,6 +306,30 @@ impl<'ctx> CodeGen<'ctx> {
     }
 }
 
+fn save_asm(module: &Module) {
+    Target::initialize_native(&InitializationConfig::default())
+        .expect("Failed to initialize native target");
+
+    let triple = TargetMachine::get_default_triple();
+    let cpu = TargetMachine::get_host_cpu_name().to_string();
+    let features = TargetMachine::get_host_cpu_features().to_string();
+
+    let target = Target::from_triple(&triple).unwrap();
+    let machine = target
+        .create_target_machine(
+            &triple,
+            &cpu,
+            &features,
+            OptimizationLevel::Aggressive,
+            RelocMode::Default,
+            CodeModel::Default,
+        )
+        .unwrap();
+    machine
+        .write_to_file(module, FileType::Assembly, "out.asm".as_ref())
+        .unwrap();
+}
+
 pub fn main() -> Result<(), Box<dyn Error>> {
     let context = Context::create();
     let module = context.create_module("program");
@@ -315,17 +345,39 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     memory[0] = 11;
 
     let instructions = [
-        Instruction::Addi(Immediate {
-            value: 33,
+        Instruction::Lb(Load {
             rs: 0,
             rd: 1,
+            offset: 0,
+        }),
+        Instruction::Addi(Immediate {
+            value: 44,
+            rs: 0,
+            rd: 2,
+        }),
+        Instruction::Add(Register {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
         }),
         Instruction::Sb(Store {
             offset: 10,
-            rs: 1,
-            rd: 2, // defaults to 0
+            rs: 3,
+            rd: 4, // defaults to 0
         }),
     ];
+    // let instructions = [
+    //     Instruction::Addi(Immediate {
+    //         value: 33,
+    //         rs: 0,
+    //         rd: 1,
+    //     }),
+    //     Instruction::Sb(Store {
+    //         offset: 10,
+    //         rs: 1,
+    //         rd: 2, // defaults to 0
+    //     }),
+    // ];
 
     println!("Compiling program");
     let program = codegen
@@ -336,7 +388,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     unsafe {
         program.call(memory.as_mut_ptr());
     }
-    println!("Expecting memory");
+    println!("Memory");
     println!("{:?}", memory);
 
     Ok(())
