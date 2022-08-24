@@ -865,4 +865,35 @@ mod tests {
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 22);
     }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_add_sh(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 255,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::AddI(Immediate {
+                value: 255,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Add(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_u16(&memory[20..]);
+        assert_eq!(value, 255 * 2);
+    }
 }
