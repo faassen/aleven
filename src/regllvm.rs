@@ -1,4 +1,5 @@
 use crate::reglang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
+use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
@@ -6,8 +7,9 @@ use inkwell::module::Module;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
-use inkwell::values::{IntValue, PointerValue};
+use inkwell::values::{FunctionValue, IntMathValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
+use rustc_hash::FxHashMap;
 use std::error::Error;
 
 type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
@@ -42,6 +44,13 @@ impl<'ctx> CodeGen<'ctx> {
         let ptr = function.get_nth_param(0)?.into_pointer_value();
 
         let mut registers: Registers = [i16_type.const_int(0, false); 32];
+
+        let (blocks, targets) = self.get_blocks(function, instructions);
+
+        let mut blocks_iter = blocks.iter();
+        let mut block = blocks_iter.next().unwrap().1;
+        self.builder.build_unconditional_branch(block);
+        self.builder.position_at_end(block);
 
         for instruction in instructions {
             match instruction {
@@ -79,15 +88,62 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::Sh(store) => {
                     self.jit_compile_sh(&registers, ptr, store);
                 }
-                _ => {}
+                Instruction::Beq(branch) => {
+                    block = blocks_iter.next().unwrap().1;
+                    self.jit_compile_beq(&registers, branch, block, &targets);
+                    self.builder.position_at_end(block);
+                }
+                Instruction::Target(_target) => {
+                    block = blocks_iter.next().unwrap().1;
+                    self.builder.build_unconditional_branch(block);
+                    self.builder.position_at_end(block);
+                }
             }
         }
         self.builder.build_return(None);
 
         // self.module.print_to_stderr();
-        // save_asm(&self.module)
+        // save_asm(&self.module);
 
         unsafe { self.execution_engine.get_function("program").ok() }
+    }
+
+    fn get_blocks(
+        &self,
+        parent: FunctionValue,
+        instructions: &[Instruction],
+    ) -> (Vec<(usize, BasicBlock)>, FxHashMap<u16, BasicBlock>) {
+        let mut blocks = Vec::new();
+        let mut targets = FxHashMap::default();
+        let mut block_id: u16 = 0;
+        blocks.push((
+            0,
+            self.context
+                .append_basic_block(parent, &format!("block{}", block_id)),
+        ));
+        block_id += 1;
+        for (index, instruction) in instructions.iter().enumerate() {
+            match instruction {
+                Instruction::Beq(_branch) => {
+                    blocks.push((
+                        index,
+                        self.context
+                            .append_basic_block(parent, &format!("block{}", block_id)),
+                    ));
+                    block_id += 1;
+                }
+                Instruction::Target(target) => {
+                    let block = self
+                        .context
+                        .append_basic_block(parent, &format!("block{}", block_id));
+                    blocks.push((index, block));
+                    targets.insert(target.identifier, block);
+                    block_id += 1;
+                }
+                _ => {}
+            }
+        }
+        (blocks, targets)
     }
 
     fn jit_compile_immediate(
@@ -100,6 +156,31 @@ impl<'ctx> CodeGen<'ctx> {
         let value = i16_type.const_int(immediate.value as u64, false);
         let rs = registers[immediate.rs as usize];
         let result = f(&self.builder, rs, value);
+        registers[immediate.rd as usize] = result;
+    }
+
+    fn jit_compile_immediate_shift(
+        &self,
+        registers: &mut Registers<'ctx>,
+        immediate: &Immediate,
+        f: Build2<'ctx>,
+    ) {
+        let i16_type = self.context.i16_type();
+        let value = i16_type.const_int(immediate.value as u64, false);
+        let max = i16_type.const_int(16, false);
+        let zero = i16_type.const_int(0, false);
+        let mvalue = self
+            .builder
+            .build_select(
+                self.builder
+                    .build_int_compare(IntPredicate::UGE, value, max, "cmp max"),
+                zero,
+                value,
+                "max shift",
+            )
+            .into_int_value();
+        let rs = registers[immediate.rs as usize];
+        let result = f(&self.builder, rs, mvalue);
         registers[immediate.rd as usize] = result;
     }
 
@@ -140,22 +221,23 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn jit_compile_slli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+        self.jit_compile_immediate_shift(registers, immediate, |builder, a, b| {
             builder.build_left_shift(a, b, "slli")
         });
     }
 
     fn jit_compile_srli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+        self.jit_compile_immediate_shift(registers, immediate, |builder, a, b| {
             builder.build_right_shift(a, b, false, "srli")
         });
     }
 
     fn jit_compile_srai(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+        self.jit_compile_immediate_shift(registers, immediate, |builder, a, b| {
             builder.build_right_shift(a, b, true, "srai")
         });
     }
+
     fn jit_compile_register(
         &self,
         registers: &mut Registers<'ctx>,
@@ -165,6 +247,31 @@ impl<'ctx> CodeGen<'ctx> {
         let rs1 = registers[register.rs1 as usize];
         let rs2 = registers[register.rs2 as usize];
         let result = f(&self.builder, rs1, rs2);
+        registers[register.rd as usize] = result;
+    }
+
+    fn jit_compile_register_shift(
+        &self,
+        registers: &mut Registers<'ctx>,
+        register: &Register,
+        f: Build2<'ctx>,
+    ) {
+        let i16_type = self.context.i16_type();
+        let max = i16_type.const_int(16, false);
+        let zero = i16_type.const_int(0, false);
+        let rs1 = registers[register.rs1 as usize];
+        let rs2 = registers[register.rs2 as usize];
+        let mvalue = self
+            .builder
+            .build_select(
+                self.builder
+                    .build_int_compare(IntPredicate::UGE, rs2, max, "cmp max"),
+                zero,
+                rs2,
+                "max shift",
+            )
+            .into_int_value();
+        let result = f(&self.builder, rs1, mvalue);
         registers[register.rd as usize] = result;
     }
 
@@ -204,17 +311,17 @@ impl<'ctx> CodeGen<'ctx> {
         });
     }
     fn jit_compile_sll(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
+        self.jit_compile_register_shift(registers, register, |builder, a, b| {
             builder.build_left_shift(a, b, "and")
         });
     }
     fn jit_compile_srl(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
+        self.jit_compile_register_shift(registers, register, |builder, a, b| {
             builder.build_right_shift(a, b, false, "and")
         });
     }
     fn jit_compile_sra(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.jit_compile_register(registers, register, |builder, a, b| {
+        self.jit_compile_register_shift(registers, register, |builder, a, b| {
             builder.build_right_shift(a, b, true, "and")
         });
     }
@@ -303,6 +410,42 @@ impl<'ctx> CodeGen<'ctx> {
         let address = unsafe { self.builder.build_gep(i16_ptr, &[index], "gep index") };
         self.builder
             .build_store(address, registers[store.rs as usize]);
+    }
+
+    fn jit_compile_beq(
+        &self,
+        registers: &Registers,
+        branch: &Branch,
+        next_block: BasicBlock,
+        targets: &FxHashMap<u16, BasicBlock>,
+    ) {
+        let cond = self.builder.build_int_compare(
+            IntPredicate::EQ,
+            registers[branch.rs1 as usize],
+            registers[branch.rs2 as usize],
+            "beq",
+        );
+        if let Some(target) = targets.get(&branch.target) {
+            self.builder
+                .build_conditional_branch(cond, *target, next_block);
+        } else {
+            self.builder.build_unconditional_branch(next_block);
+        }
+    }
+
+    fn max_shift(
+        builder: Builder<'ctx>,
+        value: IntValue<'ctx>,
+        max: IntValue<'ctx>,
+    ) -> IntValue<'ctx> {
+        builder
+            .build_select(
+                builder.build_int_compare(IntPredicate::UGE, value, max, ">= max"),
+                value,
+                max,
+                "max_shift",
+            )
+            .into_int_value()
     }
 }
 
@@ -1507,7 +1650,7 @@ mod tests {
 
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
-        assert_eq!(memory[10], 0);
+        assert_eq!(memory[10], 0b101);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
@@ -1567,7 +1710,7 @@ mod tests {
 
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
-        assert_eq!(memory[10], 0);
+        assert_eq!(memory[10], 0b10100);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
@@ -1662,7 +1805,7 @@ mod tests {
         assert_eq!(value, -5);
     }
 
-    #[parameterized(runner={run_interpreter})]
+    #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_beq(runner: Runner) {
         let instructions = [
             Instruction::Lb(Load {
