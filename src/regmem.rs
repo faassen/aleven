@@ -25,8 +25,11 @@ pub enum ByteInstr {
 pub struct Assembler {}
 
 trait ValueAssembler {
-    fn disassemble(input: &[u8]) -> Self;
     fn assemble(&self, output: &mut Vec<u8>);
+}
+
+trait ValueDisassembler {
+    fn disassemble(input: &[u8]) -> Self;
 }
 
 impl Assembler {
@@ -46,11 +49,17 @@ impl Assembler {
         let mut result = Vec::new();
         let mut index: usize = 0;
         while index < values.len() {
-            let instruction_values = &values[index..index + 7];
-            if let Some(byte_instr) = ByteInstr::decode(instruction_values[0]) {
-                result.push(byte_instr.disassemble(&instruction_values[1..]));
+            if let Some(byte_instr) = ByteInstr::decode(values[index]) {
+                let start = index + 1;
+                let end = start + byte_instr.size();
+                if end > values.len() {
+                    break;
+                }
+                result.push(byte_instr.disassemble(&values[start..end]));
+                index = end;
+            } else {
+                index += 1;
             }
-            index += 7;
         }
         result
     }
@@ -63,6 +72,27 @@ impl ByteInstr {
 
     fn decode(value: u8) -> Option<ByteInstr> {
         num::FromPrimitive::from_u8(value)
+    }
+
+    fn size(&self) -> usize {
+        match self {
+            ByteInstr::ADDI => 6,
+            ByteInstr::SLTI => 6,
+            ByteInstr::ANDI => 6,
+            ByteInstr::ORI => 6,
+            ByteInstr::XORI => 6,
+            ByteInstr::SLLI => 6,
+            ByteInstr::SRAI => 6,
+            ByteInstr::ADD => 6,
+            ByteInstr::SLT => 6,
+            ByteInstr::AND => 6,
+            ByteInstr::OR => 6,
+            ByteInstr::XOR => 6,
+            ByteInstr::SLL => 6,
+            ByteInstr::SRA => 6,
+            ByteInstr::LB => 6,
+            ByteInstr::SB => 6,
+        }
     }
 
     fn assemble(instruction: &Instruction, output: &mut Vec<u8>) {
@@ -157,7 +187,7 @@ impl ByteInstr {
     }
 }
 
-impl ValueAssembler for Immediate {
+impl ValueDisassembler for Immediate {
     fn disassemble(input: &[u8]) -> Self {
         Immediate {
             value: bytes_to_i16(&input[0..2]),
@@ -165,6 +195,9 @@ impl ValueAssembler for Immediate {
             rd: bytes_to_i16(&input[4..6]),
         }
     }
+}
+
+impl ValueAssembler for Immediate {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.value));
         output.extend(i16_to_bytes(self.rs));
@@ -172,7 +205,7 @@ impl ValueAssembler for Immediate {
     }
 }
 
-impl ValueAssembler for Load {
+impl ValueDisassembler for Load {
     fn disassemble(input: &[u8]) -> Self {
         Load {
             offset: bytes_to_i16(&input[0..2]),
@@ -180,6 +213,9 @@ impl ValueAssembler for Load {
             rd: bytes_to_i16(&input[4..6]),
         }
     }
+}
+
+impl ValueAssembler for Load {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.offset));
         output.extend(i16_to_bytes(self.rs));
@@ -187,7 +223,7 @@ impl ValueAssembler for Load {
     }
 }
 
-impl ValueAssembler for Store {
+impl ValueDisassembler for Store {
     fn disassemble(input: &[u8]) -> Self {
         Store {
             offset: bytes_to_i16(&input[0..2]),
@@ -195,6 +231,9 @@ impl ValueAssembler for Store {
             rd: bytes_to_i16(&input[4..6]),
         }
     }
+}
+
+impl ValueAssembler for Store {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.offset));
         output.extend(i16_to_bytes(self.rs));
@@ -202,7 +241,7 @@ impl ValueAssembler for Store {
     }
 }
 
-impl ValueAssembler for Register {
+impl ValueDisassembler for Register {
     fn disassemble(input: &[u8]) -> Self {
         Register {
             rs1: bytes_to_i16(&input[0..2]),
@@ -210,6 +249,9 @@ impl ValueAssembler for Register {
             rd: bytes_to_i16(&input[4..6]),
         }
     }
+}
+
+impl ValueAssembler for Register {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.rs1));
         output.extend(i16_to_bytes(self.rs2));
@@ -264,7 +306,8 @@ mod tests {
 
     #[test]
     fn test_disassemble_invalid_instruction() {
-        // 127 isn't going to be a valid instruction soon
+        // 127 isn't going to be a valid instruction soon, but 0 is, but there isn't
+        // enough data to disassemble it
         let bytes = vec![127, 0, 0, 1, 0, 2, 0];
         let assembler = Assembler::new();
         let instructions = assembler.disassemble(&bytes);
