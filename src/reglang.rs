@@ -30,14 +30,15 @@ pub struct Register {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {
-    AddI(Immediate),
-    SltI(Immediate),
-    AndI(Immediate),
-    OrI(Immediate),
-    XorI(Immediate),
-    SllI(Immediate),
-    SrlI(Immediate),
-    SraI(Immediate),
+    Addi(Immediate),
+    Slti(Immediate),
+    Sltiu(Immediate),
+    Andi(Immediate),
+    Ori(Immediate),
+    Xori(Immediate),
+    slli(Immediate),
+    Srli(Immediate),
+    Srai(Immediate),
     Add(Register),
     Slt(Register),
     And(Register),
@@ -69,14 +70,14 @@ impl Processor {
 impl Instruction {
     pub fn execute(&self, processor: &mut Processor, memory: &mut [u8]) {
         match self {
-            Instruction::AddI(immediate) => {
+            Instruction::Addi(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
                 let result = processor.registers[rs as usize] + value;
                 processor.registers[rd as usize] = result;
             }
-            Instruction::SltI(immediate) => {
+            Instruction::Slti(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
@@ -87,42 +88,53 @@ impl Instruction {
                 };
                 processor.registers[rd as usize] = result;
             }
-            Instruction::AndI(immediate) => {
+            Instruction::Sltiu(immediate) => {
+                let rs = immediate.rs;
+                let rd = immediate.rd;
+                let value = immediate.value;
+                let result = if processor.registers[rs as usize] < value {
+                    1
+                } else {
+                    0
+                };
+                processor.registers[rd as usize] = result;
+            }
+            Instruction::Andi(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
                 let result = processor.registers[rs as usize] & value;
                 processor.registers[rd as usize] = result;
             }
-            Instruction::OrI(immediate) => {
+            Instruction::Ori(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
                 let result = processor.registers[rs as usize] | value;
                 processor.registers[rd as usize] = result;
             }
-            Instruction::XorI(immediate) => {
+            Instruction::Xori(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
                 let result = processor.registers[rs as usize] ^ value;
                 processor.registers[rd as usize] = result;
             }
-            Instruction::SllI(immediate) => {
+            Instruction::slli(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
                 let result = processor.registers[rs as usize] << value;
                 processor.registers[rd as usize] = result;
             }
-            Instruction::SrlI(immediate) => {
+            Instruction::Srli(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
                 let result = (processor.registers[rs as usize] as u16) >> value;
                 processor.registers[rd as usize] = result as i16;
             }
-            Instruction::SraI(immediate) => {
+            Instruction::Srai(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
@@ -237,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_add_immediate() {
-        let instruction = Instruction::AddI(Immediate {
+        let instruction = Instruction::Addi(Immediate {
             value: 5,
             rs: 1,
             rd: 2,
@@ -252,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_add_immediate_register_has_value() {
-        let instruction = Instruction::AddI(Immediate {
+        let instruction = Instruction::Addi(Immediate {
             value: 5,
             rs: 1,
             rd: 2,
@@ -268,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_add_immediate_register_rs_is_rd() {
-        let instruction = Instruction::AddI(Immediate {
+        let instruction = Instruction::Addi(Immediate {
             value: 5,
             rs: 1,
             rd: 1,
@@ -284,7 +296,7 @@ mod tests {
 
     #[test]
     fn test_add_immediate_register_dec() {
-        let instruction = Instruction::AddI(Immediate {
+        let instruction = Instruction::Addi(Immediate {
             value: -1,
             rs: 1,
             rd: 1,
@@ -300,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_slt_immediate() {
-        let instruction = Instruction::SltI(Immediate {
+        let instruction = Instruction::Slti(Immediate {
             value: 5,
             rs: 1,
             rd: 2,
@@ -315,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_slt_immediate_equal() {
-        let instruction = Instruction::SltI(Immediate {
+        let instruction = Instruction::Slti(Immediate {
             value: 5,
             rs: 1,
             rd: 2,
@@ -331,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_slt_immediate_greater() {
-        let instruction = Instruction::SltI(Immediate {
+        let instruction = Instruction::Slti(Immediate {
             value: 5,
             rs: 1,
             rd: 2,
@@ -347,7 +359,7 @@ mod tests {
 
     #[test]
     fn test_and_immediate() {
-        let instruction = Instruction::AndI(Immediate {
+        let instruction = Instruction::Andi(Immediate {
             value: 0b1111110,
             rs: 1,
             rd: 2,
@@ -363,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_or_immediate() {
-        let instruction = Instruction::OrI(Immediate {
+        let instruction = Instruction::Ori(Immediate {
             value: 0b1111110,
             rs: 1,
             rd: 2,
@@ -379,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_xor_immediate() {
-        let instruction = Instruction::XorI(Immediate {
+        let instruction = Instruction::Xori(Immediate {
             value: 0b1111010,
             rs: 1,
             rd: 2,
@@ -395,7 +407,7 @@ mod tests {
 
     #[test]
     fn test_sll_immediate() {
-        let instruction = Instruction::SllI(Immediate {
+        let instruction = Instruction::slli(Immediate {
             value: 2,
             rs: 1,
             rd: 2,
@@ -411,7 +423,7 @@ mod tests {
 
     #[test]
     fn test_sra_immediate() {
-        let instruction = Instruction::SraI(Immediate {
+        let instruction = Instruction::Srai(Immediate {
             value: 2,
             rs: 1,
             rd: 2,

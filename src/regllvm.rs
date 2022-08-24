@@ -18,6 +18,8 @@ struct CodeGen<'ctx> {
 
 type Registers<'a> = [IntValue<'a>; 32];
 
+type Build2<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
+
 impl<'ctx> CodeGen<'ctx> {
     fn jit_compile_program(
         &self,
@@ -40,15 +42,17 @@ impl<'ctx> CodeGen<'ctx> {
 
         for instruction in instructions {
             match instruction {
-                Instruction::AddI(immediate) => self.jit_compile_addi(&mut registers, immediate),
-                Instruction::SltI(immediate) => self.jit_compile_slti(&mut registers, immediate),
-                Instruction::AndI(immediate) => self.jit_compile_andi(&mut registers, immediate),
-                Instruction::OrI(immediate) => self.jit_compile_ori(&mut registers, immediate),
-                Instruction::XorI(immediate) => self.jit_compile_xori(&mut registers, immediate),
-                Instruction::SllI(immediate) => self.jit_compile_slli(&mut registers, immediate),
-                Instruction::SrlI(immediate) => self.jit_compile_srli(&mut registers, immediate),
-                Instruction::SraI(immediate) => self.jit_compile_srai(&mut registers, immediate),
+                Instruction::Addi(immediate) => self.jit_compile_addi(&mut registers, immediate),
+                Instruction::Slti(immediate) => self.jit_compile_slti(&mut registers, immediate),
+                Instruction::Sltiu(immediate) => self.jit_compile_sltiu(&mut registers, immediate),
+                Instruction::Andi(immediate) => self.jit_compile_andi(&mut registers, immediate),
+                Instruction::Ori(immediate) => self.jit_compile_ori(&mut registers, immediate),
+                Instruction::Xori(immediate) => self.jit_compile_xori(&mut registers, immediate),
+                Instruction::slli(immediate) => self.jit_compile_slli(&mut registers, immediate),
+                Instruction::Srli(immediate) => self.jit_compile_srli(&mut registers, immediate),
+                Instruction::Srai(immediate) => self.jit_compile_srai(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
+                Instruction::Slt(register) => self.jit_compile_slt(&mut registers, register),
                 Instruction::Lb(load) => {
                     self.jit_compile_lb(&mut registers, ptr, load);
                 }
@@ -76,7 +80,7 @@ impl<'ctx> CodeGen<'ctx> {
         &self,
         registers: &mut Registers<'ctx>,
         immediate: &Immediate,
-        f: fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>,
+        f: Build2<'ctx>,
     ) {
         let i16_type = self.context.i16_type();
         let value = i16_type.const_int(immediate.value as u64, false);
@@ -92,6 +96,12 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn jit_compile_slti(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_int_compare(IntPredicate::SLT, a, b, "slti")
+        });
+    }
+
+    fn jit_compile_sltiu(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         self.jit_compile_immediate(registers, immediate, |builder, a, b| {
             builder.build_int_compare(IntPredicate::SLT, a, b, "slti")
         });
@@ -220,11 +230,28 @@ impl<'ctx> CodeGen<'ctx> {
             .build_store(address, registers[store.rs as usize]);
     }
 
-    fn jit_compile_add(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn jit_compile_register(
+        &self,
+        registers: &mut Registers<'ctx>,
+        register: &Register,
+        f: Build2<'ctx>,
+    ) {
         let rs1 = registers[register.rs1 as usize];
         let rs2 = registers[register.rs2 as usize];
-        let sum = self.builder.build_int_add(rs1, rs2, "add");
-        registers[register.rd as usize] = sum;
+        let result = f(&self.builder, rs1, rs2);
+        registers[register.rd as usize] = result;
+    }
+
+    fn jit_compile_add(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_int_add(a, b, "add")
+        });
+    }
+
+    fn jit_compile_slt(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_int_compare(IntPredicate::SLT, a, b, "slt")
+        });
     }
 }
 
@@ -243,7 +270,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     memory[0] = 11;
 
     let instructions = [
-        Instruction::AddI(Immediate {
+        Instruction::Addi(Immediate {
             value: 33,
             rs: 0,
             rd: 1,
@@ -316,7 +343,7 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add_immediate(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 33,
                 rs: 0,
                 rd: 1,
@@ -336,12 +363,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add_immediate_register_has_value(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 10,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 33,
                 rs: 0,
                 rd: 1,
@@ -361,12 +388,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add_immediate_register_rs_is_rd(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 10,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 33,
                 rs: 0,
                 rd: 0,
@@ -386,12 +413,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add_immediate_register_dec(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 10,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: -1,
                 rs: 0,
                 rd: 0,
@@ -411,7 +438,7 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_slt_immediate_less(runner: Runner) {
         let instructions = [
-            Instruction::SltI(Immediate {
+            Instruction::Slti(Immediate {
                 value: 5,
                 rs: 0,
                 rd: 1,
@@ -430,12 +457,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_slt_immediate_equal(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 5,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::SltI(Immediate {
+            Instruction::Slti(Immediate {
                 value: 5,
                 rs: 0,
                 rd: 1,
@@ -454,12 +481,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_slt_immediate_greater(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 6,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::SltI(Immediate {
+            Instruction::Slti(Immediate {
                 value: 5,
                 rs: 0,
                 rd: 1,
@@ -478,12 +505,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_and_immediate(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 0b1010101,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::AndI(Immediate {
+            Instruction::Andi(Immediate {
                 value: 0b1111110,
                 rs: 0,
                 rd: 1,
@@ -502,12 +529,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_or_immediate(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 0b1010100,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::OrI(Immediate {
+            Instruction::Ori(Immediate {
                 value: 0b1111110,
                 rs: 0,
                 rd: 1,
@@ -526,12 +553,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_xor_immediate(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 0b1010100,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::XorI(Immediate {
+            Instruction::Xori(Immediate {
                 value: 0b1111010,
                 rs: 0,
                 rd: 1,
@@ -550,12 +577,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_sll_immediate(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 5,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::SllI(Immediate {
+            Instruction::slli(Immediate {
                 value: 2,
                 rs: 0,
                 rd: 1,
@@ -574,12 +601,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_sra_immediate(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 20,
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::SraI(Immediate {
+            Instruction::Srai(Immediate {
                 value: 2,
                 rs: 0,
                 rd: 1,
@@ -733,7 +760,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::SraI(Immediate {
+            Instruction::Srai(Immediate {
                 value: 2,
                 rs: 1,
                 rd: 1,
@@ -760,7 +787,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::SraI(Immediate {
+            Instruction::Srai(Immediate {
                 value: 2,
                 rs: 1,
                 rd: 1,
@@ -787,7 +814,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::SrlI(Immediate {
+            Instruction::Srli(Immediate {
                 value: 2,
                 rs: 1,
                 rd: 1,
@@ -809,12 +836,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 33,
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 44,
                 rs: 0,
                 rd: 2,
@@ -839,12 +866,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add_negative(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 33,
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: -11,
                 rs: 0,
                 rd: 2,
@@ -869,12 +896,12 @@ mod tests {
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add_sh(runner: Runner) {
         let instructions = [
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 255,
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::AddI(Immediate {
+            Instruction::Addi(Immediate {
                 value: 255,
                 rs: 0,
                 rd: 2,

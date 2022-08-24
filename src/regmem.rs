@@ -69,31 +69,31 @@ impl ByteInstr {
 
     fn assemble(instruction: &Instruction, output: &mut Vec<u8>) {
         match instruction {
-            Instruction::AddI(immediate) => {
+            Instruction::Addi(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::ADDI.encode());
             }
-            Instruction::SltI(immediate) => {
+            Instruction::Slti(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::SLTI.encode());
             }
-            Instruction::AndI(immediate) => {
+            Instruction::Andi(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::ANDI.encode());
             }
-            Instruction::OrI(immediate) => {
+            Instruction::Ori(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::ORI.encode());
             }
-            Instruction::XorI(immediate) => {
+            Instruction::Xori(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::XORI.encode());
             }
-            Instruction::SllI(immediate) => {
+            Instruction::slli(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::SLLI.encode());
             }
-            Instruction::SraI(immediate) => {
+            Instruction::Srai(immediate) => {
                 immediate.assemble(output);
                 output.push(ByteInstr::SRAI.encode());
             }
@@ -133,21 +133,19 @@ impl ByteInstr {
                 store.assemble(output);
                 output.push(ByteInstr::SB.encode());
             }
-            _ => {
-                panic!("unsupported instruction: {:?}", instruction);
-            }
+            _ => {}
         }
     }
 
     fn disassemble(&self, values: &[u8]) -> Instruction {
         match self {
-            ByteInstr::ADDI => Instruction::AddI(Immediate::disassemble(values)),
-            ByteInstr::SLTI => Instruction::SltI(Immediate::disassemble(values)),
-            ByteInstr::ANDI => Instruction::AndI(Immediate::disassemble(values)),
-            ByteInstr::ORI => Instruction::OrI(Immediate::disassemble(values)),
-            ByteInstr::XORI => Instruction::XorI(Immediate::disassemble(values)),
-            ByteInstr::SLLI => Instruction::SllI(Immediate::disassemble(values)),
-            ByteInstr::SRAI => Instruction::SraI(Immediate::disassemble(values)),
+            ByteInstr::ADDI => Instruction::Addi(Immediate::disassemble(values)),
+            ByteInstr::SLTI => Instruction::Slti(Immediate::disassemble(values)),
+            ByteInstr::ANDI => Instruction::Andi(Immediate::disassemble(values)),
+            ByteInstr::ORI => Instruction::Ori(Immediate::disassemble(values)),
+            ByteInstr::XORI => Instruction::Xori(Immediate::disassemble(values)),
+            ByteInstr::SLLI => Instruction::slli(Immediate::disassemble(values)),
+            ByteInstr::SRAI => Instruction::Srai(Immediate::disassemble(values)),
             ByteInstr::ADD => Instruction::Add(Register::disassemble(values)),
             ByteInstr::SLT => Instruction::Slt(Register::disassemble(values)),
             ByteInstr::AND => Instruction::And(Register::disassemble(values)),
