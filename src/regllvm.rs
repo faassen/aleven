@@ -1,4 +1,4 @@
-use crate::reglang::{Immediate, Instruction, Load, Register, Store};
+use crate::reglang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
@@ -1660,5 +1660,55 @@ mod tests {
         runner(&instructions, &mut memory);
         let value = LittleEndian::read_i16(&memory[20..]);
         assert_eq!(value, -5);
+    }
+
+    #[parameterized(runner={run_interpreter})]
+    fn test_beq(runner: Runner) {
+        let instructions = [
+            Instruction::Lb(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Lb(Load {
+                offset: 1,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Beq(Branch {
+                rs1: 1,
+                rs2: 2,
+                target: 1,
+            }),
+            Instruction::Lb(Load {
+                offset: 2,
+                rs: 0,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+            Instruction::Target(BranchTarget::new(1)),
+        ];
+
+        let mut memory = [0u8; 64];
+        memory[0] = 10;
+        memory[1] = 10;
+        memory[2] = 30;
+
+        runner(&instructions, &mut memory);
+        // branch happened, so no store
+        assert_eq!(memory[10], 0);
+
+        let mut memory = [0u8; 64];
+        memory[0] = 10;
+        memory[1] = 20;
+        memory[2] = 30;
+
+        runner(&instructions, &mut memory);
+        // branch happened, so store of 30
+        assert_eq!(memory[10], 30);
     }
 }

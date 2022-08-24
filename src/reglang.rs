@@ -1,4 +1,5 @@
 use byteorder::{ByteOrder, LittleEndian};
+use rustc_hash::FxHashMap;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Immediate {
@@ -29,6 +30,21 @@ pub struct Register {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Branch {
+    pub target: u16,
+    pub rs1: i16,
+    pub rs2: i16,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct BranchTarget {
+    pub identifier: u16,
+    // these to make instructions all the same size
+    pub _dummy0: u16,
+    pub _dummy1: u16,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {
     Addi(Immediate),
     Slti(Immediate),
@@ -54,10 +70,14 @@ pub enum Instruction {
     Lbu(Load),
     Sh(Store),
     Sb(Store),
+    Beq(Branch),
+    Target(BranchTarget),
 }
 
 pub struct Processor {
     registers: [i16; 32],
+    pc: usize,
+    jumped: bool,
 }
 
 pub struct Program {
@@ -66,12 +86,21 @@ pub struct Program {
 
 impl Processor {
     pub fn new() -> Processor {
-        Processor { registers: [0; 32] }
+        Processor {
+            registers: [0; 32],
+            pc: 0,
+            jumped: false,
+        }
     }
 }
 
 impl Instruction {
-    pub fn execute(&self, processor: &mut Processor, memory: &mut [u8]) {
+    pub fn execute(
+        &self,
+        processor: &mut Processor,
+        memory: &mut [u8],
+        targets: &FxHashMap<u16, usize>,
+    ) {
         match self {
             Instruction::Addi(immediate) => {
                 let rs = immediate.rs;
@@ -287,14 +316,59 @@ impl Instruction {
                 let address = (processor.registers[rd as usize] + offset) as usize;
                 memory[address] = processor.registers[rs as usize] as u8;
             }
+            Instruction::Beq(branch) => {
+                let rs1 = branch.rs1;
+                let rs2 = branch.rs2;
+                let target = branch.target;
+                let index = targets.get(&target);
+                if let Some(index) = index {
+                    if processor.registers[rs1 as usize] == processor.registers[rs2 as usize] {
+                        processor.pc = *index;
+                        processor.jumped = true;
+                    }
+                }
+            }
+            Instruction::Target(_target) => {
+                // this is a no-op, as targets are only used for branches
+            }
         }
     }
 }
 
 impl Program {
     pub fn execute(&self, processor: &mut Processor, memory: &mut [u8]) {
-        for instruction in self.instructions.iter() {
-            instruction.execute(processor, memory);
+        let targets = self.targets();
+        loop {
+            let instruction = &self.instructions[processor.pc];
+            instruction.execute(processor, memory, &targets);
+            if processor.jumped {
+                processor.jumped = false;
+            } else {
+                processor.pc += 1;
+            }
+            if processor.pc >= self.instructions.len() {
+                break;
+            }
+        }
+    }
+
+    fn targets(&self) -> FxHashMap<u16, usize> {
+        let mut targets = FxHashMap::default();
+        for (index, instruction) in self.instructions.iter().enumerate() {
+            if let Instruction::Target(target) = instruction {
+                targets.insert(target.identifier, index);
+            }
+        }
+        targets
+    }
+}
+
+impl BranchTarget {
+    pub fn new(identifier: u16) -> BranchTarget {
+        BranchTarget {
+            identifier,
+            _dummy0: 0,
+            _dummy1: 0,
         }
     }
 }
