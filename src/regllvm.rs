@@ -539,6 +539,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::reglang::BranchTarget;
     use crate::reglang::{Processor, Program};
     use byteorder::{ByteOrder, LittleEndian};
     use parameterized::parameterized;
