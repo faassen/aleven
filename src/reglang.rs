@@ -42,8 +42,11 @@ pub enum Instruction {
     Xor(Register),
     Sll(Register),
     Sra(Register),
-    Load(Load),
-    Store(Store),
+    Lh(Load),
+    Lb(Load),
+    Lbu(Load),
+    Sh(Store),
+    Sb(Store),
 }
 
 pub struct Processor {
@@ -170,14 +173,35 @@ impl Instruction {
                 let result = processor.registers[rs1 as usize] >> processor.registers[rs2 as usize];
                 processor.registers[rd as usize] = result;
             }
-            Instruction::Load(load) => {
+            Instruction::Lh(load) => {
                 let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
                 let result = memory[(processor.registers[rs as usize] + offset) as usize];
                 processor.registers[rd as usize] = result as i16;
             }
-            Instruction::Store(store) => {
+            Instruction::Lb(load) => {
+                let offset = load.offset;
+                let rs = load.rs;
+                let rd = load.rd;
+                let result = memory[(processor.registers[rs as usize] + offset) as usize];
+                processor.registers[rd as usize] = result as i16;
+            }
+            Instruction::Lbu(load) => {
+                let offset = load.offset;
+                let rs = load.rs;
+                let rd = load.rd;
+                let result = memory[(processor.registers[rs as usize] + offset) as usize];
+                processor.registers[rd as usize] = result as i16;
+            }
+            Instruction::Sh(store) => {
+                let offset = store.offset;
+                let rs = store.rs;
+                let address = store.rd;
+                memory[(processor.registers[address as usize] + offset) as usize] =
+                    processor.registers[rs as usize] as u8;
+            }
+            Instruction::Sb(store) => {
                 let offset = store.offset;
                 let rs = store.rs;
                 let address = store.rd;
@@ -580,7 +604,7 @@ mod tests {
 
     #[test]
     fn test_load() {
-        let instruction = Instruction::Load(Load {
+        let instruction = Instruction::Lb(Load {
             offset: 0,
             rs: 1,
             rd: 2,
@@ -596,7 +620,7 @@ mod tests {
 
     #[test]
     fn test_load_offset() {
-        let instruction = Instruction::Load(Load {
+        let instruction = Instruction::Lb(Load {
             offset: 2,
             rs: 1,
             rd: 2,
@@ -615,7 +639,7 @@ mod tests {
 
     #[test]
     fn test_store() {
-        let instruction = Instruction::Store(Store {
+        let instruction = Instruction::Sb(Store {
             offset: 0,
             rs: 1,
             rd: 2,
@@ -633,7 +657,7 @@ mod tests {
 
     #[test]
     fn test_store_offset() {
-        let instruction = Instruction::Store(Store {
+        let instruction = Instruction::Sb(Store {
             offset: 2,
             rs: 1,
             rd: 2,

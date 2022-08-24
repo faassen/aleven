@@ -48,10 +48,10 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::SllI(immediate) => self.jit_compile_slli(&mut registers, immediate),
                 Instruction::SraI(immediate) => self.jit_compile_srai(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
-                Instruction::Load(load) => {
+                Instruction::Lb(load) => {
                     self.jit_compile_load(&mut registers, ptr, load);
                 }
-                Instruction::Store(store) => {
+                Instruction::Sb(store) => {
                     self.jit_compile_store(&registers, ptr, store);
                 }
                 _ => {}
@@ -173,7 +173,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             rs: 0,
             rd: 1,
         }),
-        Instruction::Store(Store {
+        Instruction::Sb(Store {
             offset: 10,
             rs: 1,
             rd: 2, // defaults to 0
@@ -245,7 +245,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -270,7 +270,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -295,7 +295,7 @@ mod tests {
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 0,
                 rd: 1, // defaults to 0
@@ -320,7 +320,7 @@ mod tests {
                 rs: 0,
                 rd: 0,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 0,
                 rd: 1, // defaults to 0
@@ -340,7 +340,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -364,7 +364,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -388,7 +388,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -412,7 +412,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -436,7 +436,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -460,7 +460,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -484,7 +484,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -508,7 +508,7 @@ mod tests {
                 rs: 0,
                 rd: 1,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
@@ -540,7 +540,7 @@ mod tests {
     //             rs: 0,
     //             rd: 1,
     //         }),
-    //         Instruction::Store(Store {
+    //         Instruction::Sb(Store {
     //             offset: 10,
     //             rs: 1,
     //             rd: 2, // defaults to 0
@@ -568,7 +568,7 @@ mod tests {
                 rs2: 2,
                 rd: 3,
             }),
-            Instruction::Store(Store {
+            Instruction::Sb(Store {
                 offset: 10,
                 rs: 3,
                 rd: 4, // defaults to 0

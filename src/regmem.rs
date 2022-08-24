@@ -18,8 +18,8 @@ pub enum ByteInstr {
     XOR,
     SLL,
     SRA,
-    LOAD,
-    STORE,
+    LB,
+    SB,
 }
 
 pub struct Assembler {}
@@ -125,13 +125,16 @@ impl ByteInstr {
                 register.assemble(output);
                 output.push(ByteInstr::SRA.encode());
             }
-            Instruction::Load(load) => {
+            Instruction::Lb(load) => {
                 load.assemble(output);
-                output.push(ByteInstr::LOAD.encode());
+                output.push(ByteInstr::LB.encode());
             }
-            Instruction::Store(store) => {
+            Instruction::Sb(store) => {
                 store.assemble(output);
-                output.push(ByteInstr::STORE.encode());
+                output.push(ByteInstr::SB.encode());
+            }
+            _ => {
+                panic!("unsupported instruction: {:?}", instruction);
             }
         }
     }
@@ -152,8 +155,8 @@ impl ByteInstr {
             ByteInstr::XOR => Instruction::Xor(Register::disassemble(values)),
             ByteInstr::SLL => Instruction::Sll(Register::disassemble(values)),
             ByteInstr::SRA => Instruction::Sra(Register::disassemble(values)),
-            ByteInstr::LOAD => Instruction::Load(Load::disassemble(values)),
-            ByteInstr::STORE => Instruction::Store(Store::disassemble(values)),
+            ByteInstr::LB => Instruction::Lb(Load::disassemble(values)),
+            ByteInstr::SB => Instruction::Sb(Store::disassemble(values)),
         }
     }
 }
