@@ -41,6 +41,7 @@ pub enum Instruction {
     Srai(Immediate),
     Add(Register),
     Slt(Register),
+    Sltu(Register),
     And(Register),
     Or(Register),
     Xor(Register),
@@ -158,6 +159,19 @@ impl Instruction {
                     } else {
                         0
                     };
+                processor.registers[rd as usize] = result;
+            }
+            Instruction::Sltu(register) => {
+                let rs1 = register.rs1;
+                let rs2 = register.rs2;
+                let rd = register.rd;
+                let result = if (processor.registers[rs1 as usize] as u16)
+                    < (processor.registers[rs2 as usize] as u16)
+                {
+                    1
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result;
             }
             Instruction::And(register) => {

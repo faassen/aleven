@@ -53,6 +53,10 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::Srai(immediate) => self.jit_compile_srai(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Slt(register) => self.jit_compile_slt(&mut registers, register),
+                Instruction::Sltu(register) => self.jit_compile_sltu(&mut registers, register),
+                Instruction::And(register) => self.jit_compile_and(&mut registers, register),
+                Instruction::Or(register) => self.jit_compile_or(&mut registers, register),
+                Instruction::Xor(register) => self.jit_compile_xor(&mut registers, register),
                 Instruction::Lb(load) => {
                     self.jit_compile_lb(&mut registers, ptr, load);
                 }
@@ -251,6 +255,27 @@ impl<'ctx> CodeGen<'ctx> {
     fn jit_compile_slt(&self, registers: &mut Registers<'ctx>, register: &Register) {
         self.jit_compile_register(registers, register, |builder, a, b| {
             builder.build_int_compare(IntPredicate::SLT, a, b, "slt")
+        });
+    }
+
+    fn jit_compile_sltu(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_int_compare(IntPredicate::ULT, a, b, "sltu")
+        });
+    }
+    fn jit_compile_and(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_and(a, b, "and")
+        });
+    }
+    fn jit_compile_or(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_or(a, b, "and")
+        });
+    }
+    fn jit_compile_xor(&self, registers: &mut Registers<'ctx>, register: &Register) {
+        self.jit_compile_register(registers, register, |builder, a, b| {
+            builder.build_xor(a, b, "and")
         });
     }
 }
@@ -960,5 +985,335 @@ mod tests {
         runner(&instructions, &mut memory);
         let value = LittleEndian::read_u16(&memory[20..]);
         assert_eq!(value, 255 * 2);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_less(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Slt(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 1);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_less_negative(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: -33,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Slt(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 1);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_equal(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Slt(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_greater(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Slt(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sltu_less(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sltu(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 1);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sltu_less_negative(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: -33, // interpreted as big
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sltu(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sltu_equal(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sltu(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sltu_greater(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 44,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 33,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Sltu(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_and(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b1010101,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 0b1111110,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::And(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b1010100);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_or(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b1010100,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 0b1111110,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Or(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b1111110);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_xor(runner: Runner) {
+        let instructions = [
+            Instruction::Addi(Immediate {
+                value: 0b1111010,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Addi(Immediate {
+                value: 0b1010100,
+                rs: 0,
+                rd: 2,
+            }),
+            Instruction::Xor(Register {
+                rs1: 1,
+                rs2: 2,
+                rd: 3,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 3,
+                rd: 4, // defaults to 0
+            }),
+        ];
+
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0b0101110);
     }
 }
