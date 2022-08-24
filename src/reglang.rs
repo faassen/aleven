@@ -187,7 +187,7 @@ impl Instruction {
                 let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
-                let address = (processor.registers[rs as usize] + offset) as usize & 0xfffe;
+                let address = ((processor.registers[rs as usize] + offset) * 2) as usize & 0xfffe;
                 let value = LittleEndian::read_i16(&memory[address..]);
                 processor.registers[rd as usize] = value;
             }
@@ -209,7 +209,7 @@ impl Instruction {
                 let offset = store.offset;
                 let rs = store.rs;
                 let rd = store.rd;
-                let address = (processor.registers[rd as usize] + offset) as usize & 0xfffe;
+                let address = ((processor.registers[rd as usize] + offset) * 2) as usize & 0xfffe;
                 LittleEndian::write_i16(&mut memory[address..], processor.registers[rs as usize]);
             }
             Instruction::Sb(store) => {

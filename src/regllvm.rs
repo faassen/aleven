@@ -46,13 +46,23 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::OrI(immediate) => self.jit_compile_ori(&mut registers, immediate),
                 Instruction::XorI(immediate) => self.jit_compile_xori(&mut registers, immediate),
                 Instruction::SllI(immediate) => self.jit_compile_slli(&mut registers, immediate),
+                Instruction::SrlI(immediate) => self.jit_compile_srli(&mut registers, immediate),
                 Instruction::SraI(immediate) => self.jit_compile_srai(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Lb(load) => {
-                    self.jit_compile_load(&mut registers, ptr, load);
+                    self.jit_compile_lb(&mut registers, ptr, load);
+                }
+                Instruction::Lbu(load) => {
+                    self.jit_compile_lbu(&mut registers, ptr, load);
                 }
                 Instruction::Sb(store) => {
-                    self.jit_compile_store(&registers, ptr, store);
+                    self.jit_compile_sb(&registers, ptr, store);
+                }
+                Instruction::Lh(load) => {
+                    self.jit_compile_lh(&mut registers, ptr, load);
+                }
+                Instruction::Sh(store) => {
+                    self.jit_compile_sh(&registers, ptr, store);
                 }
                 _ => {}
             }
@@ -111,13 +121,19 @@ impl<'ctx> CodeGen<'ctx> {
         });
     }
 
-    fn jit_compile_srai(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn jit_compile_srli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         self.jit_compile_immediate(registers, immediate, |builder, a, b| {
-            builder.build_right_shift(a, b, false, "srai")
+            builder.build_right_shift(a, b, false, "srli")
         });
     }
 
-    fn jit_compile_load(
+    fn jit_compile_srai(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_right_shift(a, b, true, "srai")
+        });
+    }
+
+    fn jit_compile_lb(
         &self,
         registers: &mut Registers<'ctx>,
         ptr: PointerValue<'ctx>,
@@ -128,11 +144,36 @@ impl<'ctx> CodeGen<'ctx> {
             .builder
             .build_int_add(offset, registers[load.rs as usize], "index");
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
-        let value = self.builder.build_load(address, "load");
-        registers[load.rd as usize] = value.into_int_value();
+        let value = self.builder.build_load(address, "lb");
+        let extended_value = self.builder.build_int_s_extend(
+            value.into_int_value(),
+            self.context.i16_type(),
+            "extend",
+        );
+        registers[load.rd as usize] = extended_value;
     }
 
-    fn jit_compile_store(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
+    fn jit_compile_lbu(
+        &self,
+        registers: &mut Registers<'ctx>,
+        ptr: PointerValue<'ctx>,
+        load: &Load,
+    ) {
+        let offset = self.context.i16_type().const_int(load.offset as u64, false);
+        let index = self
+            .builder
+            .build_int_add(offset, registers[load.rs as usize], "index");
+        let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
+        let value = self.builder.build_load(address, "lb");
+        let extended_value = self.builder.build_int_z_extend(
+            value.into_int_value(),
+            self.context.i16_type(),
+            "extend",
+        );
+        registers[load.rd as usize] = extended_value;
+    }
+
+    fn jit_compile_sb(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
         let offset = self
             .context
             .i16_type()
@@ -141,6 +182,40 @@ impl<'ctx> CodeGen<'ctx> {
             .builder
             .build_int_add(offset, registers[store.rd as usize], "index");
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
+        self.builder
+            .build_store(address, registers[store.rs as usize]);
+    }
+
+    fn jit_compile_lh(
+        &self,
+        registers: &mut Registers<'ctx>,
+        ptr: PointerValue<'ctx>,
+        load: &Load,
+    ) {
+        let i16_type = self.context.i16_type();
+        let i16_ptr_type = i16_type.ptr_type(AddressSpace::Generic);
+        let i16_ptr = self.builder.build_pointer_cast(ptr, i16_ptr_type, "lh_ptr");
+        let offset = self.context.i16_type().const_int(load.offset as u64, false);
+        let index = self
+            .builder
+            .build_int_add(offset, registers[load.rs as usize], "index");
+        let address = unsafe { self.builder.build_gep(i16_ptr, &[index], "gep index") };
+        let value = self.builder.build_load(address, "lh");
+        registers[load.rd as usize] = value.into_int_value();
+    }
+
+    fn jit_compile_sh(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
+        let i16_type = self.context.i16_type();
+        let i16_ptr_type = i16_type.ptr_type(AddressSpace::Generic);
+        let i16_ptr = self.builder.build_pointer_cast(ptr, i16_ptr_type, "sh_ptr");
+        let offset = self
+            .context
+            .i16_type()
+            .const_int(store.offset as u64, false);
+        let index = self
+            .builder
+            .build_int_add(offset, registers[store.rd as usize], "index");
+        let address = unsafe { self.builder.build_gep(i16_ptr, &[index], "gep index") };
         self.builder
             .build_store(address, registers[store.rs as usize]);
     }
@@ -540,8 +615,8 @@ mod tests {
         assert_eq!(memory[10], 11);
     }
 
-    #[test]
-    fn test_lh_sh() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lh_sh(runner: Runner) {
         let instructions = [
             Instruction::Lh(Load {
                 offset: 0,
@@ -557,13 +632,14 @@ mod tests {
         let mut memory = [0u8; 64];
         memory[0] = 2;
         memory[1] = 1;
-        run_interpreter(&instructions, &mut memory);
-        assert_eq!(memory[10], 2);
-        assert_eq!(memory[11], 1);
+        runner(&instructions, &mut memory);
+        // is at 20 as pointer type is 16 bits
+        assert_eq!(memory[20], 2);
+        assert_eq!(memory[21], 1);
     }
 
-    #[test]
-    fn test_lh_aligns() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lh_aligns(runner: Runner) {
         let instructions = [
             Instruction::Lh(Load {
                 offset: 1, // aligned back to 0
@@ -571,27 +647,28 @@ mod tests {
                 rd: 1,
             }),
             Instruction::Sh(Store {
-                offset: 11,
+                offset: 10,
                 rs: 1,
                 rd: 2, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
-        memory[0] = 2;
-        memory[1] = 1;
-        run_interpreter(&instructions, &mut memory);
-        assert_eq!(memory[10], 2);
-        assert_eq!(memory[11], 1);
+        memory[2] = 2;
+        memory[3] = 1;
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[20], 2);
+        assert_eq!(memory[21], 1);
     }
 
-    #[test]
-    fn test_sh_aligns() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sh_aligns(runner: Runner) {
         let instructions = [
             Instruction::Lh(Load {
                 offset: 0,
                 rs: 0,
                 rd: 1,
             }),
+            // it's not possible to misalign this as it's already even
             Instruction::Sh(Store {
                 offset: 11,
                 rs: 1,
@@ -601,14 +678,55 @@ mod tests {
         let mut memory = [0u8; 64];
         memory[0] = 2;
         memory[1] = 1;
-        run_interpreter(&instructions, &mut memory);
-        // memory address 11 isn't aligned, so go to 10
-        assert_eq!(memory[10], 2);
-        assert_eq!(memory[11], 1);
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[22], 2);
+        assert_eq!(memory[23], 1);
     }
 
-    #[test]
-    fn test_lb_sign_extends() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lb_sign_extends(runner: Runner) {
+        let instructions = [
+            Instruction::Lb(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = -4i8 as u8; // FFFC
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_i16(&memory[20..]);
+        assert_eq!(value, -4);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lbu_zero_extends(runner: Runner) {
+        let instructions = [
+            Instruction::Lbu(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = -4i8 as u8; // FC
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_i16(&memory[20..]);
+        assert_eq!(value, 252);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lb_sign_extends_with_sra(runner: Runner) {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
@@ -628,14 +746,14 @@ mod tests {
         ];
         let mut memory = [0u8; 64];
         memory[0] = -4i8 as u8; // FFFC
-        run_interpreter(&instructions, &mut memory);
-        let value = LittleEndian::read_i16(&memory[10..]);
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_i16(&memory[20..]);
         assert_eq!(value, -1);
         assert_eq!(value, 0xFFFFu16 as i16);
     }
 
-    #[test]
-    fn test_lbu_zero_extends() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lbu_zero_extends_sra(runner: Runner) {
         let instructions = [
             Instruction::Lbu(Load {
                 offset: 0,
@@ -654,14 +772,15 @@ mod tests {
             }),
         ];
         let mut memory = [0u8; 64];
-        memory[0] = 0b11111111;
-        run_interpreter(&instructions, &mut memory);
-        let value = LittleEndian::read_u16(&memory[10..]);
-        assert_eq!(value, 0b111111);
+        memory[0] = -4i8 as u8;
+        // lbu interprets this as 252, or 0000011111100
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_u16(&memory[20..]);
+        assert_eq!(value, 63);
     }
 
-    #[test]
-    fn test_srli_zero_extends() {
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_srli_zero_extends_srli(runner: Runner) {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
@@ -681,9 +800,10 @@ mod tests {
         ];
         let mut memory = [0u8; 64];
         memory[0] = -1i8 as u8;
-        run_interpreter(&instructions, &mut memory);
-        let value = LittleEndian::read_u16(&memory[10..]);
+        runner(&instructions, &mut memory);
+        let value = LittleEndian::read_u16(&memory[20..]);
         assert_eq!(value, 0b11111111111111);
+        assert_eq!(value, 16383);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
