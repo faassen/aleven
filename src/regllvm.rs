@@ -46,6 +46,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::OrI(immediate) => self.jit_compile_ori(&mut registers, immediate),
                 Instruction::XorI(immediate) => self.jit_compile_xori(&mut registers, immediate),
                 Instruction::SllI(immediate) => self.jit_compile_slli(&mut registers, immediate),
+                Instruction::SraI(immediate) => self.jit_compile_srai(&mut registers, immediate),
                 Instruction::Add(register) => self.jit_compile_add(&mut registers, register),
                 Instruction::Load(load) => {
                     self.jit_compile_load(&mut registers, ptr, load);
@@ -107,6 +108,12 @@ impl<'ctx> CodeGen<'ctx> {
     fn jit_compile_slli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         self.jit_compile_immediate(registers, immediate, |builder, a, b| {
             builder.build_left_shift(a, b, "slli")
+        });
+    }
+
+    fn jit_compile_srai(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+        self.jit_compile_immediate(registers, immediate, |builder, a, b| {
+            builder.build_right_shift(a, b, false, "srai")
         });
     }
 
@@ -487,6 +494,61 @@ mod tests {
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 20);
     }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sra_immediate(runner: Runner) {
+        let instructions = [
+            Instruction::AddI(Immediate {
+                value: 20,
+                rs: 0,
+                rd: 0,
+            }),
+            Instruction::SraI(Immediate {
+                value: 2,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Store(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 5);
+    }
+
+    #[test]
+    fn test_sign() {
+        let i: i16 = -1;
+        let u = i as u16;
+        assert_eq!(u, 0xffff);
+        assert_eq!(u >> 2, 0x3fff);
+    }
+
+    // #[parameterized(runner={run_llvm, run_interpreter})]
+    // fn test_sra_immediate_is_logical(runner: Runner) {
+    //     let instructions = [
+    //         Instruction::AddI(Immediate {
+    //             value: -1,
+    //             rs: 0,
+    //             rd: 0,
+    //         }),
+    //         Instruction::SraI(Immediate {
+    //             value: 2,
+    //             rs: 0,
+    //             rd: 1,
+    //         }),
+    //         Instruction::Store(Store {
+    //             offset: 10,
+    //             rs: 1,
+    //             rd: 2, // defaults to 0
+    //         }),
+    //     ];
+    //     let mut memory = [0u8; 64];
+    //     runner(&instructions, &mut memory);
+    // }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_add(runner: Runner) {
