@@ -91,8 +91,8 @@ impl Instruction {
             Instruction::Sltiu(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
-                let value = immediate.value;
-                let result = if processor.registers[rs as usize] < value {
+                let value = immediate.value as u16;
+                let result = if (processor.registers[rs as usize] as u16) < value {
                     1
                 } else {
                     0

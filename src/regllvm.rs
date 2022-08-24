@@ -103,7 +103,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn jit_compile_sltiu(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
         self.jit_compile_immediate(registers, immediate, |builder, a, b| {
-            builder.build_int_compare(IntPredicate::SLT, a, b, "slti")
+            builder.build_int_compare(IntPredicate::ULT, a, b, "sltiu")
         });
     }
 
@@ -440,6 +440,44 @@ mod tests {
         let instructions = [
             Instruction::Slti(Immediate {
                 value: 5,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 1);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_slt_immediate_less_negative(runner: Runner) {
+        let instructions = [
+            Instruction::Slti(Immediate {
+                value: -4,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sltu_immediate_less(runner: Runner) {
+        let instructions = [
+            Instruction::Sltiu(Immediate {
+                value: -4, // treated as large number instead
                 rs: 0,
                 rd: 1,
             }),
