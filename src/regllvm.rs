@@ -563,6 +563,51 @@ mod tests {
     }
 
     #[test]
+    fn test_lh_aligns() {
+        let instructions = [
+            Instruction::Lh(Load {
+                offset: 1, // aligned back to 0
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 11,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = 2;
+        memory[1] = 1;
+        run_interpreter(&instructions, &mut memory);
+        assert_eq!(memory[10], 2);
+        assert_eq!(memory[11], 1);
+    }
+
+    #[test]
+    fn test_sh_aligns() {
+        let instructions = [
+            Instruction::Lh(Load {
+                offset: 0,
+                rs: 0,
+                rd: 1,
+            }),
+            Instruction::Sh(Store {
+                offset: 11,
+                rs: 1,
+                rd: 2, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = 2;
+        memory[1] = 1;
+        run_interpreter(&instructions, &mut memory);
+        // memory address 11 isn't aligned, so go to 10
+        assert_eq!(memory[10], 2);
+        assert_eq!(memory[11], 1);
+    }
+
+    #[test]
     fn test_lb_sign_extends() {
         let instructions = [
             Instruction::Lb(Load {
