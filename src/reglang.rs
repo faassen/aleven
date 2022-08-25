@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, LittleEndian};
 use rustc_hash::FxHashMap;
-use strum_macros::{EnumDiscriminants, EnumIter};
+use strum_macros::EnumDiscriminants;
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Immediate {
@@ -293,10 +293,11 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let address = (processor.registers[rs as usize] + offset) as usize;
-                if address >= memory.len() {
-                    return;
-                }
-                let result = memory[address];
+                let result = if address < memory.len() {
+                    memory[address]
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result as i8 as i16;
             }
             Instruction::Lbu(load) => {
@@ -304,10 +305,11 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let address = (processor.registers[rs as usize] + offset) as usize;
-                if address >= memory.len() {
-                    return;
-                }
-                let result = memory[address];
+                let result = if address < memory.len() {
+                    memory[address]
+                } else {
+                    0
+                };
                 processor.registers[rd as usize] = result as u16 as i16;
             }
             Instruction::Sh(store) => {
