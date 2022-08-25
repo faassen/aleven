@@ -29,6 +29,7 @@ impl<'ctx> CodeGen<'ctx> {
     fn jit_compile_program(
         &self,
         instructions: &[Instruction],
+        memory_size: u16,
     ) -> Option<JitFunction<ProgramFunc>> {
         let i8_type = self.context.i8_type();
         let i16_type = self.context.i16_type();
@@ -74,7 +75,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::Srl(register) => self.jit_compile_srl(&mut registers, register),
                 Instruction::Sra(register) => self.jit_compile_sra(&mut registers, register),
                 Instruction::Lb(load) => {
-                    self.jit_compile_lb(&mut registers, ptr, load);
+                    self.jit_compile_lb(&mut registers, ptr, load, memory_size, function);
                 }
                 Instruction::Lbu(load) => {
                     self.jit_compile_lbu(&mut registers, ptr, load);
@@ -330,12 +331,18 @@ impl<'ctx> CodeGen<'ctx> {
         registers: &mut Registers<'ctx>,
         ptr: PointerValue<'ctx>,
         load: &Load,
+        memory_size: u16,
+        function: FunctionValue,
     ) {
         let offset = self.context.i16_type().const_int(load.offset as u64, false);
         let index = self
             .builder
             .build_int_add(offset, registers[load.rs as usize], "index");
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
+
+        let (load_block, end_block) = self.oob_bytes(index, function, memory_size);
+
+        self.builder.position_at_end(load_block);
         let value = self.builder.build_load(address, "lb");
         let extended_value = self.builder.build_int_s_extend(
             value.into_int_value(),
@@ -343,6 +350,26 @@ impl<'ctx> CodeGen<'ctx> {
             "extend",
         );
         registers[load.rd as usize] = extended_value;
+        self.builder.build_unconditional_branch(end_block);
+
+        self.builder.position_at_end(end_block);
+    }
+
+    fn oob_bytes(
+        &self,
+        index: IntValue,
+        function: FunctionValue,
+        memory_size: u16,
+    ) -> (BasicBlock, BasicBlock) {
+        let memory_size = self.context.i16_type().const_int(memory_size as u64, false);
+        let load_block = self.context.append_basic_block(function, "load");
+        let end_block = self.context.append_basic_block(function, "end_load");
+        let cond = self
+            .builder
+            .build_int_compare(IntPredicate::UGE, index, memory_size, "oob");
+        self.builder
+            .build_conditional_branch(cond, end_block, load_block);
+        (load_block, end_block)
     }
 
     fn jit_compile_lbu(
@@ -524,7 +551,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Compiling program");
     let program = codegen
-        .jit_compile_program(&instructions)
+        .jit_compile_program(&instructions, 64)
         .ok_or("Unable to JIT compile `program`")?;
 
     println!("Running program");
@@ -566,7 +593,7 @@ mod tests {
         let context = Context::create();
         let codegen = create_codegen(&context);
         let program = codegen
-            .jit_compile_program(&instructions)
+            .jit_compile_program(&instructions, memory.len() as u16)
             .expect("Unable to JIT compile `program`");
 
         unsafe {
@@ -917,6 +944,25 @@ mod tests {
         memory[0] = 11;
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 11);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lb_out_of_bounds_means_nop(runner: Runner) {
+        let instructions = [
+            Instruction::Lb(Load {
+                offset: 65,
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 2,
+                rd: 3, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
