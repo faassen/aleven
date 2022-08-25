@@ -357,16 +357,16 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(load_block);
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
-        let value = self.builder.build_load(address, "lb");
-        let extended_value0 = self.builder.build_int_s_extend(
-            value.into_int_value(),
+        let load_value = self.builder.build_load(address, "lb");
+        let load_value = self.builder.build_int_s_extend(
+            load_value.into_int_value(),
             self.context.i16_type(),
             "extended",
         );
         self.builder.build_unconditional_branch(end_block);
 
         self.builder.position_at_end(else_block);
-        let extended_value1 = self.context.i16_type().const_int(0, false);
+        let else_value = self.context.i16_type().const_int(0, false);
         self.builder.build_unconditional_branch(end_block);
 
         self.builder.position_at_end(end_block);
@@ -374,10 +374,7 @@ impl<'ctx> CodeGen<'ctx> {
             .builder
             .build_phi(self.context.i16_type(), "load_result");
 
-        phi.add_incoming(&[
-            (&extended_value0, load_block),
-            (&extended_value1, else_block),
-        ]);
+        phi.add_incoming(&[(&load_value, load_block), (&else_value, else_block)]);
 
         registers[load.rd as usize] = phi.as_basic_value().into_int_value();
     }
