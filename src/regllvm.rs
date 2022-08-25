@@ -104,7 +104,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.build_return(None);
 
         // self.module.print_to_stderr();
-        // save_asm(&self.module);
+        save_asm(&self.module);
 
         unsafe { self.execution_engine.get_function("program").ok() }
     }
@@ -387,23 +387,51 @@ impl<'ctx> CodeGen<'ctx> {
         memory_size: u16,
         function: FunctionValue,
     ) {
+        // XXX massive duplication with load_lb, only difference is how extension
+        // works. Needs refactoring
+        let lb_block = self.context.append_basic_block(function, "lb");
+        self.builder.build_unconditional_branch(lb_block);
+        self.builder.position_at_end(lb_block);
+
         let offset = self.context.i16_type().const_int(load.offset as u64, false);
         let index = self
             .builder
             .build_int_add(offset, registers[load.rs as usize], "index");
-        // let (load_block, end_block) = self.oob_bytes(index, function, memory_size);
-        // self.builder.position_at_end(load_block);
-        let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
-        let value = self.builder.build_load(address, "lb");
-        let extended_value = self.builder.build_int_z_extend(
-            value.into_int_value(),
-            self.context.i16_type(),
-            "extend",
-        );
-        registers[load.rd as usize] = extended_value;
 
-        // self.builder.build_unconditional_branch(end_block);
-        // self.builder.position_at_end(end_block);
+        let load_block = self.context.append_basic_block(function, "load");
+        let else_block = self.context.append_basic_block(function, "else");
+        let end_block = self.context.append_basic_block(function, "end_load");
+
+        let memory_size = self.context.i16_type().const_int(memory_size as u64, false);
+        let in_bounds =
+            self.builder
+                .build_int_compare(IntPredicate::ULT, index, memory_size, "in_bounds");
+        self.builder
+            .build_conditional_branch(in_bounds, load_block, else_block);
+
+        self.builder.position_at_end(load_block);
+        let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
+        let load_value = self.builder.build_load(address, "lb");
+        let load_value = self.builder.build_int_z_extend(
+            load_value.into_int_value(),
+            self.context.i16_type(),
+            "extended",
+        );
+
+        self.builder.build_unconditional_branch(end_block);
+
+        self.builder.position_at_end(else_block);
+        let else_value = self.context.i16_type().const_int(0, false);
+        self.builder.build_unconditional_branch(end_block);
+
+        self.builder.position_at_end(end_block);
+        let phi = self
+            .builder
+            .build_phi(self.context.i16_type(), "load_result");
+
+        phi.add_incoming(&[(&load_value, load_block), (&else_value, else_block)]);
+
+        registers[load.rd as usize] = phi.as_basic_value().into_int_value();
     }
 
     fn jit_compile_sb(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
@@ -984,24 +1012,24 @@ mod tests {
         assert_eq!(memory[10], 0);
     }
 
-    // #[parameterized(runner={run_llvm, run_interpreter})]
-    // fn test_lbu_out_of_bounds_means_nop(runner: Runner) {
-    //     let instructions = [
-    //         Instruction::Lbu(Load {
-    //             offset: 65,
-    //             rs: 1,
-    //             rd: 2,
-    //         }),
-    //         Instruction::Sb(Store {
-    //             offset: 10,
-    //             rs: 2,
-    //             rd: 3, // defaults to 0
-    //         }),
-    //     ];
-    //     let mut memory = [0u8; 64];
-    //     runner(&instructions, &mut memory);
-    //     assert_eq!(memory[10], 0);
-    // }
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lbu_out_of_bounds_means_nop(runner: Runner) {
+        let instructions = [
+            Instruction::Lbu(Load {
+                offset: 65,
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Sb(Store {
+                offset: 10,
+                rs: 2,
+                rd: 3, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory[10], 0);
+    }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_lh_sh(runner: Runner) {
