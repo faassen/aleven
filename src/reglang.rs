@@ -303,7 +303,11 @@ impl Instruction {
                 let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
-                let result = memory[(processor.registers[rs as usize] + offset) as usize];
+                let address = (processor.registers[rs as usize] + offset) as usize;
+                if address >= memory.len() {
+                    return;
+                }
+                let result = memory[address];
                 processor.registers[rd as usize] = result as u16 as i16;
             }
             Instruction::Sh(store) => {
