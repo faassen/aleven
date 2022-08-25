@@ -112,7 +112,7 @@ impl<'ctx> CodeGen<'ctx> {
         &self,
         parent: FunctionValue,
         instructions: &[Instruction],
-    ) -> (Vec<(usize, BasicBlock)>, FxHashMap<u16, BasicBlock>) {
+    ) -> (Vec<(usize, BasicBlock)>, FxHashMap<u8, BasicBlock>) {
         let mut blocks = Vec::new();
         let mut targets = FxHashMap::default();
         let mut block_id: u16 = 0;
@@ -417,7 +417,7 @@ impl<'ctx> CodeGen<'ctx> {
         registers: &Registers,
         branch: &Branch,
         next_block: BasicBlock,
-        targets: &FxHashMap<u16, BasicBlock>,
+        targets: &FxHashMap<u8, BasicBlock>,
     ) {
         let cond = self.builder.build_int_compare(
             IntPredicate::EQ,
@@ -1834,7 +1834,7 @@ mod tests {
                 rs: 3,
                 rd: 4, // defaults to 0
             }),
-            Instruction::Target(BranchTarget::new(1)),
+            Instruction::Target(BranchTarget { identifier: 1 }),
         ];
 
         let mut memory = [0u8; 64];

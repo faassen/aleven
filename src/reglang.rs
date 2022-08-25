@@ -12,37 +12,34 @@ pub struct Immediate {
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Load {
     pub offset: i16,
-    pub rs: i16,
-    pub rd: i16,
+    pub rs: u8,
+    pub rd: u8,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Store {
     pub offset: i16,
-    pub rs: i16,
-    pub rd: i16,
+    pub rs: u8,
+    pub rd: u8,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Register {
-    pub rs1: i16,
-    pub rs2: i16,
-    pub rd: i16,
+    pub rs1: u8,
+    pub rs2: u8,
+    pub rd: u8,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Branch {
-    pub target: u16,
-    pub rs1: i16,
-    pub rs2: i16,
+    pub target: u8,
+    pub rs1: u8,
+    pub rs2: u8,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct BranchTarget {
-    pub identifier: u16,
-    // these to make instructions all the same size
-    pub _dummy0: u16,
-    pub _dummy1: u16,
+    pub identifier: u8,
 }
 
 #[derive(EnumDiscriminants, Debug, PartialEq, Eq, Clone)]
@@ -102,7 +99,7 @@ impl Instruction {
         &self,
         processor: &mut Processor,
         memory: &mut [u8],
-        targets: &FxHashMap<u16, usize>,
+        targets: &FxHashMap<u8, usize>,
     ) {
         match self {
             Instruction::Addi(immediate) => {
@@ -355,7 +352,7 @@ impl Program {
         }
     }
 
-    fn targets(&self) -> FxHashMap<u16, usize> {
+    fn targets(&self) -> FxHashMap<u8, usize> {
         let mut targets = FxHashMap::default();
         for (index, instruction) in self.instructions.iter().enumerate() {
             if let Instruction::Target(target) = instruction {
@@ -363,15 +360,5 @@ impl Program {
             }
         }
         targets
-    }
-}
-
-impl BranchTarget {
-    pub fn new(identifier: u16) -> BranchTarget {
-        BranchTarget {
-            identifier,
-            _dummy0: 0,
-            _dummy1: 0,
-        }
     }
 }

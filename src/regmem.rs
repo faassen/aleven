@@ -143,13 +143,13 @@ impl ValueAssembler for Immediate {
 
 impl ValueDisassembler for Load {
     fn size() -> usize {
-        6
+        4
     }
     fn disassemble(input: &[u8]) -> Load {
         Load {
             offset: bytes_to_i16(&input[0..2]),
-            rs: bytes_to_i16(&input[2..4]),
-            rd: bytes_to_i16(&input[4..6]),
+            rs: input[2],
+            rd: input[3],
         }
     }
 }
@@ -157,20 +157,20 @@ impl ValueDisassembler for Load {
 impl ValueAssembler for Load {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.offset));
-        output.extend(i16_to_bytes(self.rs));
-        output.extend(i16_to_bytes(self.rd));
+        output.push(self.rs);
+        output.push(self.rd);
     }
 }
 
 impl ValueDisassembler for Store {
     fn size() -> usize {
-        6
+        4
     }
     fn disassemble(input: &[u8]) -> Self {
         Store {
             offset: bytes_to_i16(&input[0..2]),
-            rs: bytes_to_i16(&input[2..4]),
-            rd: bytes_to_i16(&input[4..6]),
+            rs: input[2],
+            rd: input[3],
         }
     }
 }
@@ -178,71 +178,67 @@ impl ValueDisassembler for Store {
 impl ValueAssembler for Store {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.offset));
-        output.extend(i16_to_bytes(self.rs));
-        output.extend(i16_to_bytes(self.rd));
+        output.push(self.rs);
+        output.push(self.rd);
     }
 }
 
 impl ValueDisassembler for Register {
     fn size() -> usize {
-        6
+        3
     }
     fn disassemble(input: &[u8]) -> Self {
         Register {
-            rs1: bytes_to_i16(&input[0..2]),
-            rs2: bytes_to_i16(&input[2..4]),
-            rd: bytes_to_i16(&input[4..6]),
+            rs1: input[0],
+            rs2: input[1],
+            rd: input[2],
         }
     }
 }
 
 impl ValueAssembler for Register {
     fn assemble(&self, output: &mut Vec<u8>) {
-        output.extend(i16_to_bytes(self.rs1));
-        output.extend(i16_to_bytes(self.rs2));
-        output.extend(i16_to_bytes(self.rd));
+        output.push(self.rs1);
+        output.push(self.rs2);
+        output.push(self.rd);
     }
 }
 
 impl ValueDisassembler for Branch {
     fn size() -> usize {
-        6
+        3
     }
     fn disassemble(input: &[u8]) -> Self {
         Branch {
-            target: bytes_to_u16(&input[0..2]),
-            rs1: bytes_to_i16(&input[2..4]),
-            rs2: bytes_to_i16(&input[4..6]),
+            target: input[0],
+            rs1: input[1],
+            rs2: input[2],
         }
     }
 }
 
 impl ValueAssembler for Branch {
     fn assemble(&self, output: &mut Vec<u8>) {
-        output.extend(u16_to_bytes(self.target));
-        output.extend(i16_to_bytes(self.rs1));
-        output.extend(i16_to_bytes(self.rs2));
+        output.push(self.target);
+        output.push(self.rs1);
+        output.push(self.rs2);
     }
 }
 
 impl ValueDisassembler for BranchTarget {
     fn size() -> usize {
-        6
+        1
     }
     fn disassemble(input: &[u8]) -> Self {
         BranchTarget {
-            identifier: bytes_to_u16(&input[0..2]),
-            _dummy0: bytes_to_u16(&input[2..4]),
-            _dummy1: bytes_to_u16(&input[4..6]),
+            identifier: input[0],
         }
     }
 }
 
 impl ValueAssembler for BranchTarget {
     fn assemble(&self, output: &mut Vec<u8>) {
-        output.extend(u16_to_bytes(self.identifier));
-        output.extend(u16_to_bytes(self._dummy0));
-        output.extend(u16_to_bytes(self._dummy1));
+        output.push(self.identifier);
     }
 }
 
@@ -278,7 +274,7 @@ mod tests {
             rs2: 1,
             rd: 2,
         })]);
-        assert_eq!(bytes, vec![Opcode::Add.encode(), 0, 0, 1, 0, 2, 0]);
+        assert_eq!(bytes, vec![Opcode::Add.encode(), 0, 1, 2]);
     }
 
     #[test]
