@@ -1177,23 +1177,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 11,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sub(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1207,23 +1207,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: i16::MAX,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 1,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Add(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1238,23 +1238,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 255,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 255,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Add(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1269,23 +1269,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Slt(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1299,23 +1299,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: -33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Slt(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1329,23 +1329,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Slt(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1359,23 +1359,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Slt(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1389,23 +1389,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sltu(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1419,23 +1419,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: -33, // interpreted as big
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sltu(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1449,23 +1449,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sltu(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1479,23 +1479,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sltu(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1509,23 +1509,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b1010101,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 0b1111110,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::And(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1539,23 +1539,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b1010100,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 0b1111110,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Or(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1569,23 +1569,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b1111010,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 0b1010100,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Xor(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1599,23 +1599,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b101,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 2,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sll(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1629,23 +1629,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b101,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 100,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sll(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1659,23 +1659,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b10100,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 2,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Srl(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1689,23 +1689,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b10100,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 100,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Srl(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1719,23 +1719,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: -20,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 2,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Srl(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1750,23 +1750,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b10100,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 2,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sra(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1780,23 +1780,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: -20,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 2,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Sra(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1811,28 +1811,28 @@ mod tests {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Lb(Load {
                 offset: 1,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Beq(Branch {
-                rs1: 1,
-                rs2: 2,
+                rs1: 2,
+                rs2: 3,
                 target: 1,
             }),
             Instruction::Lb(Load {
                 offset: 2,
-                rs: 0,
-                rd: 3,
+                rs: 1,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
             Instruction::Target(BranchTarget { identifier: 1 }),
         ];
