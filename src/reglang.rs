@@ -1,42 +1,43 @@
 use byteorder::{ByteOrder, LittleEndian};
 use rustc_hash::FxHashMap;
+use strum_macros::{EnumDiscriminants, EnumIter};
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Immediate {
     pub value: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Load {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Store {
     pub offset: i16,
     pub rs: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Register {
     pub rs1: i16,
     pub rs2: i16,
     pub rd: i16,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Branch {
     pub target: u16,
     pub rs1: i16,
     pub rs2: i16,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct BranchTarget {
     pub identifier: u16,
     // these to make instructions all the same size
@@ -44,7 +45,9 @@ pub struct BranchTarget {
     pub _dummy1: u16,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(EnumDiscriminants, Debug, PartialEq, Eq, Clone)]
+#[strum_discriminants(derive(FromPrimitive, ToPrimitive))]
+#[strum_discriminants(name(Opcode))]
 pub enum Instruction {
     Addi(Immediate),
     Slti(Immediate),

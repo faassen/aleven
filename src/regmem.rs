@@ -1,26 +1,5 @@
-use crate::reglang::{Immediate, Instruction, Load, Register, Store};
+use crate::reglang::{Branch, BranchTarget, Immediate, Instruction, Load, Opcode, Register, Store};
 use byteorder::{ByteOrder, LittleEndian};
-
-#[allow(non_camel_case_types)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
-pub enum ByteInstr {
-    ADDI,
-    SLTI,
-    ANDI,
-    ORI,
-    XORI,
-    SLLI,
-    SRAI,
-    ADD,
-    SLT,
-    AND,
-    OR,
-    XOR,
-    SLL,
-    SRA,
-    LB,
-    SB,
-}
 
 pub struct Assembler {}
 
@@ -29,7 +8,33 @@ trait ValueAssembler {
 }
 
 trait ValueDisassembler {
+    fn size() -> usize;
     fn disassemble(input: &[u8]) -> Self;
+}
+
+impl ValueAssembler for Instruction {
+    fn assemble(&self, output: &mut Vec<u8>) {
+        output.push(opcode(self));
+        use Instruction::*;
+        match self {
+            Addi(immediate) | Slti(immediate) | Sltiu(immediate) | Andi(immediate)
+            | Ori(immediate) | Xori(immediate) | Slli(immediate) | Srli(immediate)
+            | Srai(immediate) => immediate.assemble(output),
+            Add(register) | Sub(register) | Sll(register) | Srl(register) | Sra(register) => {
+                register.assemble(output)
+            }
+            Lh(load) | Lbu(load) | Lb(load) => load.assemble(output),
+            Sh(store) | Sb(store) => store.assemble(output),
+            _ => {
+                panic!("unimplemented instruction: {:?}", self)
+            }
+        }
+    }
+}
+
+fn opcode(instruction: &Instruction) -> u8 {
+    let opcode: Opcode = instruction.into();
+    opcode.encode()
 }
 
 impl Assembler {
@@ -40,7 +45,7 @@ impl Assembler {
     pub fn assemble(&self, instructions: &[Instruction]) -> Vec<u8> {
         let mut result = Vec::new();
         for instruction in instructions {
-            ByteInstr::assemble(instruction, &mut result);
+            instruction.assemble(&mut result);
         }
         result
     }
@@ -49,13 +54,13 @@ impl Assembler {
         let mut result = Vec::new();
         let mut index: usize = 0;
         while index < values.len() {
-            if let Some(byte_instr) = ByteInstr::decode(values[index]) {
+            if let Some(opcode) = Opcode::decode(values[index]) {
                 let start = index + 1;
-                let end = start + byte_instr.size();
+                let end = start + opcode.size();
                 if end > values.len() {
                     break;
                 }
-                result.push(byte_instr.disassemble(&values[start..end]));
+                result.push(opcode.disassemble(&values[start..end]));
                 index = end;
             } else {
                 index += 1;
@@ -65,130 +70,62 @@ impl Assembler {
     }
 }
 
-impl ByteInstr {
+impl Opcode {
     fn encode(&self) -> u8 {
         num::ToPrimitive::to_u8(self).unwrap()
     }
 
-    fn decode(value: u8) -> Option<ByteInstr> {
+    fn decode(value: u8) -> Option<Opcode> {
         num::FromPrimitive::from_u8(value)
     }
 
     fn size(&self) -> usize {
+        use Opcode::*;
         match self {
-            ByteInstr::ADDI => 6,
-            ByteInstr::SLTI => 6,
-            ByteInstr::ANDI => 6,
-            ByteInstr::ORI => 6,
-            ByteInstr::XORI => 6,
-            ByteInstr::SLLI => 6,
-            ByteInstr::SRAI => 6,
-            ByteInstr::ADD => 6,
-            ByteInstr::SLT => 6,
-            ByteInstr::AND => 6,
-            ByteInstr::OR => 6,
-            ByteInstr::XOR => 6,
-            ByteInstr::SLL => 6,
-            ByteInstr::SRA => 6,
-            ByteInstr::LB => 6,
-            ByteInstr::SB => 6,
+            Addi | Slti | Sltiu | Andi | Ori | Xori | Slli | Srli | Srai => Immediate::size(),
+            Add | Sub | Slt | Sltu | And | Or | Xor | Sll | Srl | Sra => Register::size(),
+            Lh | Lbu | Lb => Load::size(),
+            Sh | Sb => Store::size(),
+            _ => {
+                panic!("unimplemented opcode: {:?}", self)
+            }
         }
     }
-
-    fn assemble(instruction: &Instruction, output: &mut Vec<u8>) {
-        match instruction {
-            Instruction::Addi(immediate) => {
-                output.push(ByteInstr::ADDI.encode());
-                immediate.assemble(output);
-            }
-            Instruction::Slti(immediate) => {
-                output.push(ByteInstr::SLTI.encode());
-                immediate.assemble(output);
-            }
-            Instruction::Andi(immediate) => {
-                output.push(ByteInstr::ANDI.encode());
-                immediate.assemble(output);
-            }
-            Instruction::Ori(immediate) => {
-                output.push(ByteInstr::ORI.encode());
-                immediate.assemble(output);
-            }
-            Instruction::Xori(immediate) => {
-                output.push(ByteInstr::XORI.encode());
-                immediate.assemble(output);
-            }
-            Instruction::Slli(immediate) => {
-                output.push(ByteInstr::SLLI.encode());
-                immediate.assemble(output);
-            }
-            Instruction::Srai(immediate) => {
-                output.push(ByteInstr::SRAI.encode());
-                immediate.assemble(output);
-            }
-            Instruction::Add(register) => {
-                output.push(ByteInstr::ADD.encode());
-                register.assemble(output);
-            }
-            Instruction::Slt(register) => {
-                output.push(ByteInstr::SLT.encode());
-                register.assemble(output);
-            }
-            Instruction::And(register) => {
-                output.push(ByteInstr::AND.encode());
-                register.assemble(output);
-            }
-            Instruction::Or(register) => {
-                output.push(ByteInstr::OR.encode());
-                register.assemble(output);
-            }
-            Instruction::Xor(register) => {
-                output.push(ByteInstr::XOR.encode());
-                register.assemble(output);
-            }
-            Instruction::Sll(register) => {
-                output.push(ByteInstr::SLL.encode());
-                register.assemble(output);
-            }
-            Instruction::Sra(register) => {
-                output.push(ByteInstr::SRA.encode());
-                register.assemble(output);
-            }
-            Instruction::Lb(load) => {
-                output.push(ByteInstr::LB.encode());
-                load.assemble(output);
-            }
-            Instruction::Sb(store) => {
-                output.push(ByteInstr::SB.encode());
-                store.assemble(output);
-            }
-            _ => {}
-        }
-    }
-
     fn disassemble(&self, values: &[u8]) -> Instruction {
+        use Opcode::*;
         match self {
-            ByteInstr::ADDI => Instruction::Addi(Immediate::disassemble(values)),
-            ByteInstr::SLTI => Instruction::Slti(Immediate::disassemble(values)),
-            ByteInstr::ANDI => Instruction::Andi(Immediate::disassemble(values)),
-            ByteInstr::ORI => Instruction::Ori(Immediate::disassemble(values)),
-            ByteInstr::XORI => Instruction::Xori(Immediate::disassemble(values)),
-            ByteInstr::SLLI => Instruction::Slli(Immediate::disassemble(values)),
-            ByteInstr::SRAI => Instruction::Srai(Immediate::disassemble(values)),
-            ByteInstr::ADD => Instruction::Add(Register::disassemble(values)),
-            ByteInstr::SLT => Instruction::Slt(Register::disassemble(values)),
-            ByteInstr::AND => Instruction::And(Register::disassemble(values)),
-            ByteInstr::OR => Instruction::Or(Register::disassemble(values)),
-            ByteInstr::XOR => Instruction::Xor(Register::disassemble(values)),
-            ByteInstr::SLL => Instruction::Sll(Register::disassemble(values)),
-            ByteInstr::SRA => Instruction::Sra(Register::disassemble(values)),
-            ByteInstr::LB => Instruction::Lb(Load::disassemble(values)),
-            ByteInstr::SB => Instruction::Sb(Store::disassemble(values)),
+            Addi => Instruction::Addi(Immediate::disassemble(values)),
+            Slti => Instruction::Slti(Immediate::disassemble(values)),
+            Sltiu => Instruction::Sltiu(Immediate::disassemble(values)),
+            Andi => Instruction::Andi(Immediate::disassemble(values)),
+            Ori => Instruction::Ori(Immediate::disassemble(values)),
+            Xori => Instruction::Xori(Immediate::disassemble(values)),
+            Slli => Instruction::Slli(Immediate::disassemble(values)),
+            Srli => Instruction::Srli(Immediate::disassemble(values)),
+            Srai => Instruction::Srai(Immediate::disassemble(values)),
+            Add => Instruction::Add(Register::disassemble(values)),
+            Sub => Instruction::Sub(Register::disassemble(values)),
+            Sll => Instruction::Sll(Register::disassemble(values)),
+            Srl => Instruction::Srl(Register::disassemble(values)),
+            Sra => Instruction::Sra(Register::disassemble(values)),
+            Lh => Instruction::Lh(Load::disassemble(values)),
+            Lbu => Instruction::Lbu(Load::disassemble(values)),
+            Lb => Instruction::Lb(Load::disassemble(values)),
+            Sh => Instruction::Sh(Store::disassemble(values)),
+            Sb => Instruction::Sb(Store::disassemble(values)),
+            _ => {
+                panic!("unimplemented opcode: {:?}", self)
+            }
         }
     }
 }
 
 impl ValueDisassembler for Immediate {
-    fn disassemble(input: &[u8]) -> Self {
+    fn size() -> usize {
+        6
+    }
+
+    fn disassemble(input: &[u8]) -> Immediate {
         Immediate {
             value: bytes_to_i16(&input[0..2]),
             rs: bytes_to_i16(&input[2..4]),
@@ -206,7 +143,10 @@ impl ValueAssembler for Immediate {
 }
 
 impl ValueDisassembler for Load {
-    fn disassemble(input: &[u8]) -> Self {
+    fn size() -> usize {
+        6
+    }
+    fn disassemble(input: &[u8]) -> Load {
         Load {
             offset: bytes_to_i16(&input[0..2]),
             rs: bytes_to_i16(&input[2..4]),
@@ -224,6 +164,9 @@ impl ValueAssembler for Load {
 }
 
 impl ValueDisassembler for Store {
+    fn size() -> usize {
+        6
+    }
     fn disassemble(input: &[u8]) -> Self {
         Store {
             offset: bytes_to_i16(&input[0..2]),
@@ -242,6 +185,9 @@ impl ValueAssembler for Store {
 }
 
 impl ValueDisassembler for Register {
+    fn size() -> usize {
+        6
+    }
     fn disassemble(input: &[u8]) -> Self {
         Register {
             rs1: bytes_to_i16(&input[0..2]),
@@ -281,7 +227,7 @@ mod tests {
             rs2: 1,
             rd: 2,
         })]);
-        assert_eq!(bytes, vec![ByteInstr::ADD.encode(), 0, 0, 1, 0, 2, 0]);
+        assert_eq!(bytes, vec![Opcode::Add.encode(), 0, 0, 1, 0, 2, 0]);
     }
 
     #[test]
