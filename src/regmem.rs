@@ -86,9 +86,8 @@ impl Opcode {
             Add | Sub | Slt | Sltu | And | Or | Xor | Sll | Srl | Sra => Register::size(),
             Lh | Lbu | Lb => Load::size(),
             Sh | Sb => Store::size(),
-            _ => {
-                panic!("unimplemented opcode: {:?}", self)
-            }
+            Beq => Branch::size(),
+            Target => BranchTarget::size(),
         }
     }
     fn disassemble(&self, values: &[u8]) -> Instruction {
@@ -205,6 +204,48 @@ impl ValueAssembler for Register {
     }
 }
 
+impl ValueDisassembler for Branch {
+    fn size() -> usize {
+        6
+    }
+    fn disassemble(input: &[u8]) -> Self {
+        Branch {
+            target: bytes_to_u16(&input[0..2]),
+            rs1: bytes_to_i16(&input[2..4]),
+            rs2: bytes_to_i16(&input[4..6]),
+        }
+    }
+}
+
+impl ValueAssembler for Branch {
+    fn assemble(&self, output: &mut Vec<u8>) {
+        output.extend(u16_to_bytes(self.target));
+        output.extend(i16_to_bytes(self.rs1));
+        output.extend(i16_to_bytes(self.rs2));
+    }
+}
+
+impl ValueDisassembler for BranchTarget {
+    fn size() -> usize {
+        6
+    }
+    fn disassemble(input: &[u8]) -> Self {
+        BranchTarget {
+            identifier: bytes_to_u16(&input[0..2]),
+            _dummy0: bytes_to_u16(&input[2..4]),
+            _dummy1: bytes_to_u16(&input[4..6]),
+        }
+    }
+}
+
+impl ValueAssembler for BranchTarget {
+    fn assemble(&self, output: &mut Vec<u8>) {
+        output.extend(u16_to_bytes(self.identifier));
+        output.extend(u16_to_bytes(self._dummy0));
+        output.extend(u16_to_bytes(self._dummy1));
+    }
+}
+
 fn i16_to_bytes(value: i16) -> [u8; 2] {
     let mut buffer = [0u8; 2];
     LittleEndian::write_i16(&mut buffer, value);
@@ -213,6 +254,16 @@ fn i16_to_bytes(value: i16) -> [u8; 2] {
 
 fn bytes_to_i16(input: &[u8]) -> i16 {
     LittleEndian::read_i16(input)
+}
+
+fn u16_to_bytes(value: u16) -> [u8; 2] {
+    let mut buffer = [0u8; 2];
+    LittleEndian::write_u16(&mut buffer, value);
+    buffer
+}
+
+fn bytes_to_u16(input: &[u8]) -> u16 {
+    LittleEndian::read_u16(input)
 }
 
 #[cfg(test)]
