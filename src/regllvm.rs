@@ -7,6 +7,7 @@ use inkwell::module::Module;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
+use inkwell::types::IntType;
 use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
@@ -24,6 +25,7 @@ struct CodeGen<'ctx> {
 type Registers<'a> = [IntValue<'a>; 32];
 
 type Build2<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
+type LoadValue<'ctx> = fn(&Builder<'ctx>, IntType<'ctx>, PointerValue<'ctx>) -> IntValue<'ctx>;
 
 impl<'ctx> CodeGen<'ctx> {
     fn jit_compile_program(
@@ -327,13 +329,14 @@ impl<'ctx> CodeGen<'ctx> {
         });
     }
 
-    fn jit_compile_lb(
+    fn compile_in_bounds(
         &self,
         registers: &mut Registers<'ctx>,
         ptr: PointerValue<'ctx>,
         load: &Load,
         memory_size: u16,
         function: FunctionValue,
+        load_branch: LoadValue<'ctx>,
     ) {
         let lb_block = self.context.append_basic_block(function, "lb");
         self.builder.build_unconditional_branch(lb_block);
@@ -357,12 +360,9 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.builder.position_at_end(load_block);
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
-        let load_value = self.builder.build_load(address, "lb");
-        let load_value = self.builder.build_int_s_extend(
-            load_value.into_int_value(),
-            self.context.i16_type(),
-            "extended",
-        );
+
+        let load_value = load_branch(&self.builder, self.context.i16_type(), address);
+
         self.builder.build_unconditional_branch(end_block);
 
         self.builder.position_at_end(else_block);
@@ -379,6 +379,27 @@ impl<'ctx> CodeGen<'ctx> {
         registers[load.rd as usize] = phi.as_basic_value().into_int_value();
     }
 
+    fn jit_compile_lb(
+        &self,
+        registers: &mut Registers<'ctx>,
+        ptr: PointerValue<'ctx>,
+        load: &Load,
+        memory_size: u16,
+        function: FunctionValue,
+    ) {
+        self.compile_in_bounds(
+            registers,
+            ptr,
+            load,
+            memory_size,
+            function,
+            |builder, i16_type, address| {
+                let load_value = builder.build_load(address, "lb");
+                builder.build_int_s_extend(load_value.into_int_value(), i16_type, "extended")
+            },
+        );
+    }
+
     fn jit_compile_lbu(
         &self,
         registers: &mut Registers<'ctx>,
@@ -387,51 +408,17 @@ impl<'ctx> CodeGen<'ctx> {
         memory_size: u16,
         function: FunctionValue,
     ) {
-        // XXX massive duplication with load_lb, only difference is how extension
-        // works. Needs refactoring
-        let lb_block = self.context.append_basic_block(function, "lb");
-        self.builder.build_unconditional_branch(lb_block);
-        self.builder.position_at_end(lb_block);
-
-        let offset = self.context.i16_type().const_int(load.offset as u64, false);
-        let index = self
-            .builder
-            .build_int_add(offset, registers[load.rs as usize], "index");
-
-        let load_block = self.context.append_basic_block(function, "load");
-        let else_block = self.context.append_basic_block(function, "else");
-        let end_block = self.context.append_basic_block(function, "end_load");
-
-        let memory_size = self.context.i16_type().const_int(memory_size as u64, false);
-        let in_bounds =
-            self.builder
-                .build_int_compare(IntPredicate::ULT, index, memory_size, "in_bounds");
-        self.builder
-            .build_conditional_branch(in_bounds, load_block, else_block);
-
-        self.builder.position_at_end(load_block);
-        let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
-        let load_value = self.builder.build_load(address, "lb");
-        let load_value = self.builder.build_int_z_extend(
-            load_value.into_int_value(),
-            self.context.i16_type(),
-            "extended",
+        self.compile_in_bounds(
+            registers,
+            ptr,
+            load,
+            memory_size,
+            function,
+            |builder, i16_type, address| {
+                let load_value = builder.build_load(address, "lb");
+                builder.build_int_z_extend(load_value.into_int_value(), i16_type, "extended")
+            },
         );
-
-        self.builder.build_unconditional_branch(end_block);
-
-        self.builder.position_at_end(else_block);
-        let else_value = self.context.i16_type().const_int(0, false);
-        self.builder.build_unconditional_branch(end_block);
-
-        self.builder.position_at_end(end_block);
-        let phi = self
-            .builder
-            .build_phi(self.context.i16_type(), "load_result");
-
-        phi.add_incoming(&[(&load_value, load_block), (&else_value, else_block)]);
-
-        registers[load.rd as usize] = phi.as_basic_value().into_int_value();
     }
 
     fn jit_compile_sb(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
