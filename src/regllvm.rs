@@ -489,24 +489,24 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
     let instructions = [
         Instruction::Lb(Load {
-            rs: 0,
-            rd: 1,
+            rs: 1,
+            rd: 2,
             offset: 0,
         }),
         Instruction::Addi(Immediate {
             value: 44,
-            rs: 0,
-            rd: 2,
+            rs: 1,
+            rd: 3,
         }),
         Instruction::Add(Register {
-            rs1: 1,
-            rs2: 2,
-            rd: 3,
+            rs1: 2,
+            rs2: 3,
+            rd: 4,
         }),
         Instruction::Sb(Store {
             offset: 10,
-            rs: 3,
-            rd: 4, // defaults to 0
+            rs: 4,
+            rd: 5, // defaults to 0
         }),
     ];
     // let instructions = [
@@ -586,13 +586,13 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
 
@@ -606,18 +606,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 10,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
 
@@ -631,18 +631,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 10,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 0,
-                rd: 1, // defaults to 0
+                rs: 1,
+                rd: 2, // defaults to 0
             }),
         ];
 
