@@ -5,8 +5,8 @@ use strum_macros::{EnumDiscriminants, EnumIter};
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Immediate {
     pub value: i16,
-    pub rs: i16,
-    pub rd: i16,
+    pub rs: u8,
+    pub rd: u8,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]

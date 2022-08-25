@@ -121,14 +121,14 @@ impl Opcode {
 
 impl ValueDisassembler for Immediate {
     fn size() -> usize {
-        6
+        4
     }
 
     fn disassemble(input: &[u8]) -> Immediate {
         Immediate {
             value: bytes_to_i16(&input[0..2]),
-            rs: bytes_to_i16(&input[2..4]),
-            rd: bytes_to_i16(&input[4..6]),
+            rs: input[2],
+            rd: input[3],
         }
     }
 }
@@ -136,8 +136,8 @@ impl ValueDisassembler for Immediate {
 impl ValueAssembler for Immediate {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.value));
-        output.extend(i16_to_bytes(self.rs));
-        output.extend(i16_to_bytes(self.rd));
+        output.push(self.rs);
+        output.push(self.rd);
     }
 }
 
@@ -305,7 +305,7 @@ mod tests {
     fn test_disassemble_invalid_instruction() {
         // 127 isn't going to be a valid instruction soon, but 0 is, but there isn't
         // enough data to disassemble it
-        let bytes = vec![127, 0, 0, 1, 0, 2, 0];
+        let bytes = vec![127, 0, 0];
         let assembler = Assembler::new();
         let instructions = assembler.disassemble(&bytes);
         assert_eq!(instructions.len(), 0);
