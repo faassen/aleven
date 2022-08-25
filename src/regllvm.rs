@@ -656,18 +656,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 10,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Addi(Immediate {
                 value: -1,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 0,
-                rd: 1, // defaults to 0
+                rs: 1,
+                rd: 2, // defaults to 0
             }),
         ];
 
@@ -681,13 +681,13 @@ mod tests {
         let instructions = [
             Instruction::Slti(Immediate {
                 value: 5,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -700,13 +700,13 @@ mod tests {
         let instructions = [
             Instruction::Slti(Immediate {
                 value: -4,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -719,13 +719,13 @@ mod tests {
         let instructions = [
             Instruction::Sltiu(Immediate {
                 value: -4, // treated as large number instead
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -738,18 +738,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 5,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Slti(Immediate {
                 value: 5,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -762,18 +762,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 6,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Slti(Immediate {
                 value: 5,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -786,18 +786,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b1010101,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Andi(Immediate {
                 value: 0b1111110,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -810,18 +810,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b1010100,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Ori(Immediate {
                 value: 0b1111110,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -834,18 +834,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 0b1010100,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Xori(Immediate {
                 value: 0b1111010,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -858,18 +858,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 5,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Slli(Immediate {
                 value: 2,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -882,18 +882,18 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 20,
-                rs: 0,
-                rd: 0,
+                rs: 1,
+                rd: 1,
             }),
             Instruction::Srai(Immediate {
                 value: 2,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -906,13 +906,13 @@ mod tests {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -926,13 +926,13 @@ mod tests {
         let instructions = [
             Instruction::Lh(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -949,13 +949,13 @@ mod tests {
         let instructions = [
             Instruction::Lh(Load {
                 offset: 1, // aligned back to 0
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -971,14 +971,14 @@ mod tests {
         let instructions = [
             Instruction::Lh(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             // it's not possible to misalign this as it's already even
             Instruction::Sh(Store {
                 offset: 11,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -994,13 +994,13 @@ mod tests {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -1015,13 +1015,13 @@ mod tests {
         let instructions = [
             Instruction::Lbu(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -1036,18 +1036,18 @@ mod tests {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Srai(Immediate {
                 value: 2,
-                rs: 1,
-                rd: 1,
+                rs: 2,
+                rd: 2,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -1063,18 +1063,18 @@ mod tests {
         let instructions = [
             Instruction::Lbu(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Srai(Immediate {
                 value: 2,
-                rs: 1,
-                rd: 1,
+                rs: 2,
+                rd: 2,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -1090,18 +1090,18 @@ mod tests {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Srli(Immediate {
                 value: 2,
-                rs: 1,
-                rd: 1,
+                rs: 2,
+                rd: 2,
             }),
             Instruction::Sh(Store {
                 offset: 10,
-                rs: 1,
-                rd: 2, // defaults to 0
+                rs: 2,
+                rd: 3, // defaults to 0
             }),
         ];
         let mut memory = [0u8; 64];
@@ -1117,23 +1117,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: 44,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Add(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
@@ -1147,23 +1147,23 @@ mod tests {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 33,
-                rs: 0,
-                rd: 1,
+                rs: 1,
+                rd: 2,
             }),
             Instruction::Addi(Immediate {
                 value: -11,
-                rs: 0,
-                rd: 2,
+                rs: 1,
+                rd: 3,
             }),
             Instruction::Add(Register {
-                rs1: 1,
-                rs2: 2,
-                rd: 3,
+                rs1: 2,
+                rs2: 3,
+                rd: 4,
             }),
             Instruction::Sb(Store {
                 offset: 10,
-                rs: 3,
-                rd: 4, // defaults to 0
+                rs: 4,
+                rd: 5, // defaults to 0
             }),
         ];
 
