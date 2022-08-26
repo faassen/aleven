@@ -2,6 +2,9 @@
 
 - Fuzz testing
 
+- If multiple branch targets have the same identifier, want to resolve this
+  properly.
+
 - Cache
 
 - Calls
