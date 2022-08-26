@@ -4,8 +4,8 @@ extern crate num_derive;
 
 mod assemble;
 mod lang;
-mod regllvm;
+mod llvm;
 
 fn main() {
-    regllvm::main();
+    llvm::main();
 }
