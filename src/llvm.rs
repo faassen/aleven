@@ -1,9 +1,10 @@
-use crate::lang::{Branch, Immediate, Instruction, Load, Register, Store};
+use crate::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
+use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
@@ -628,6 +629,14 @@ fn save_asm(module: &Module) {
     let cpu = TargetMachine::get_host_cpu_name().to_string();
     let features = TargetMachine::get_host_cpu_features().to_string();
 
+    // let pass_manager_builder = PassManagerBuilder::create();
+    // pass_manager_builder.set_optimization_level(OptimizationLevel::Aggressive);
+
+    // let pass_manager = PassManager::create(module);
+
+    // pass_manager_builder.populate_function_pass_manager(&pass_manager);
+    // pass_manager.add_demote_memory_to_register_pass();
+
     let target = Target::from_triple(&triple).unwrap();
     let machine = target
         .create_target_machine(
@@ -639,6 +648,8 @@ fn save_asm(module: &Module) {
             CodeModel::Default,
         )
         .unwrap();
+    // machine.add_analysis_passes(&pass_manager);
+
     machine
         .write_to_file(module, FileType::Assembly, "out.asm".as_ref())
         .unwrap();
@@ -658,26 +669,52 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let mut memory = [0u8; 64];
     memory[0] = 11;
 
+    // let instructions = [
+    //     Instruction::Lb(Load {
+    //         rs: 1,
+    //         rd: 2,
+    //         offset: 0,
+    //     }),
+    //     Instruction::Addi(Immediate {
+    //         value: 44,
+    //         rs: 1,
+    //         rd: 3,
+    //     }),
+    //     Instruction::Add(Register {
+    //         rs1: 2,
+    //         rs2: 3,
+    //         rd: 4,
+    //     }),
+    //     Instruction::Sb(Store {
+    //         offset: 10,
+    //         rs: 4,
+    //         rd: 5, // defaults to 0
+    //     }),
+    // ];
+
+    use Instruction::*;
     let instructions = [
-        Instruction::Lb(Load {
-            rs: 1,
-            rd: 2,
-            offset: 0,
+        Target(BranchTarget { identifier: 176 }),
+        Lh(Load {
+            offset: 8728,
+            rs: 24,
+            rd: 24,
         }),
-        Instruction::Addi(Immediate {
-            value: 44,
-            rs: 1,
-            rd: 3,
+        Beq(Branch {
+            target: 255,
+            rs1: 24,
+            rs2: 31,
         }),
-        Instruction::Add(Register {
-            rs1: 2,
-            rs2: 3,
-            rd: 4,
+        Addi(Immediate {
+            value: 6168,
+            rs: 24,
+            rd: 24,
         }),
-        Instruction::Sb(Store {
-            offset: 10,
-            rs: 4,
-            rd: 5, // defaults to 0
+        Target(BranchTarget { identifier: 255 }),
+        Addi(Immediate {
+            value: 0,
+            rs: 24,
+            rd: 24,
         }),
     ];
     // let instructions = [
@@ -698,6 +735,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         .compile_program(&instructions, 64)
         .ok_or("Unable to JIT compile `program`")?;
 
+    save_asm(&codegen.module);
     println!("Running program");
     unsafe {
         program.call(memory.as_mut_ptr());
