@@ -1,4 +1,4 @@
-use crate::reglang::{Branch, Immediate, Instruction, Load, Register, Store};
+use crate::lang::{Branch, Immediate, Instruction, Load, Register, Store};
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -599,8 +599,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::reglang::BranchTarget;
-    use crate::reglang::{Processor, Program};
+    use crate::lang::BranchTarget;
+    use crate::lang::{Processor, Program};
     use byteorder::{ByteOrder, LittleEndian};
     use parameterized::parameterized;
 

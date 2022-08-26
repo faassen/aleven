@@ -3,7 +3,7 @@ extern crate num;
 extern crate num_derive;
 
 mod assemble;
-mod reglang;
+mod lang;
 mod regllvm;
 
 fn main() {

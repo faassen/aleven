@@ -1,4 +1,4 @@
-use crate::reglang::{Branch, BranchTarget, Immediate, Instruction, Load, Opcode, Register, Store};
+use crate::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Opcode, Register, Store};
 use byteorder::{ByteOrder, LittleEndian};
 
 pub struct Assembler {}
