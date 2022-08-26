@@ -112,7 +112,7 @@ impl Instruction {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
                 let value = immediate.value;
-                let result = processor.registers[rs as usize] + value;
+                let result = processor.registers[rs as usize].wrapping_add(value);
                 processor.registers[rd as usize] = result;
             }
             Instruction::Slti(immediate) => {
