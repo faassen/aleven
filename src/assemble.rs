@@ -104,6 +104,11 @@ impl Opcode {
             Srai => Instruction::Srai(Immediate::disassemble(values)),
             Add => Instruction::Add(Register::disassemble(values)),
             Sub => Instruction::Sub(Register::disassemble(values)),
+            Slt => Instruction::Slt(Register::disassemble(values)),
+            Sltu => Instruction::Sltu(Register::disassemble(values)),
+            And => Instruction::And(Register::disassemble(values)),
+            Or => Instruction::Or(Register::disassemble(values)),
+            Xor => Instruction::Xor(Register::disassemble(values)),
             Sll => Instruction::Sll(Register::disassemble(values)),
             Srl => Instruction::Srl(Register::disassemble(values)),
             Sra => Instruction::Sra(Register::disassemble(values)),
@@ -112,9 +117,8 @@ impl Opcode {
             Lb => Instruction::Lb(Load::disassemble(values)),
             Sh => Instruction::Sh(Store::disassemble(values)),
             Sb => Instruction::Sb(Store::disassemble(values)),
-            _ => {
-                panic!("unimplemented opcode: {:?}", self)
-            }
+            Beq => Instruction::Beq(Branch::disassemble(values)),
+            Target => Instruction::Target(BranchTarget::disassemble(values)),
         }
     }
 }
