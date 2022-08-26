@@ -2213,7 +2213,6 @@ mod tests {
     fn test_bug4(runner: Runner) {
         let assembler = Assembler::new();
         let instructions = assembler.disassemble(&[7, 92, 209, 218, 176]);
-        println!("{:?}", instructions);
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
     }
@@ -2222,7 +2221,6 @@ mod tests {
     fn test_bug5(runner: Runner) {
         let assembler = Assembler::new();
         let instructions = assembler.disassemble(&[254, 22, 68, 156, 25, 49]);
-        println!("{:?}", instructions);
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
     }
@@ -2232,7 +2230,6 @@ mod tests {
         let assembler = Assembler::new();
         let instructions =
             assembler.disassemble(&[5, 0, 0, 0, 0, 0, 0, 91, 27, 0, 0, 0, 96, 0, 1, 213, 21]);
-        println!("{:?}", instructions);
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
     }
@@ -2244,7 +2241,6 @@ mod tests {
             5, 234, 234, 234, 234, 234, 234, 234, 234, 29, 21, 234, 234, 234, 234, 32, 10, 32, 6,
             10,
         ]);
-        println!("{:?}", instructions);
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
     }
@@ -2256,8 +2252,21 @@ mod tests {
             0, 0, 234, 249, 185, 255, 230, 5, 191, 150, 150, 150, 150, 150, 150, 150, 150, 150,
             150, 150, 150, 150, 150, 150, 150, 150, 22, 6, 70, 0, 22,
         ]);
-        println!("{:?}", instructions);
         let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_bug9(runner: Runner) {
+        let assembler = Assembler::new();
+        let data = [
+            20, 77, 22, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 0,
+            146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146,
+            146, 22, 22, 0, 0, 0, 0, 0, 233, 0,
+        ];
+        let instructions = assembler.disassemble(&data);
+        println!("{:?}", instructions);
+        let mut memory = data.to_vec();
         runner(&instructions, &mut memory);
     }
 }

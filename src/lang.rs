@@ -291,7 +291,7 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let address = address_h(processor, rs, offset);
-                let result = if address < memory.len() {
+                let result = if address < (memory.len() - 1) {
                     LittleEndian::read_i16(&memory[address..])
                 } else {
                     0
@@ -327,7 +327,7 @@ impl Instruction {
                 let rs = store.rs;
                 let rd = store.rd;
                 let address = address_h(processor, rd, offset);
-                if address < memory.len() {
+                if address < (memory.len() - 1) {
                     LittleEndian::write_i16(
                         &mut memory[address..],
                         processor.registers[rs as usize],
