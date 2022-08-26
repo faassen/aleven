@@ -195,14 +195,16 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn compile_slti(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
-            builder.build_int_compare(IntPredicate::SLT, a, b, "slti")
+        self.compile_immediate(registers, immediate, |builder, context, a, b| {
+            let cmp = builder.build_int_compare(IntPredicate::SLT, a, b, "slti");
+            builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
 
     fn compile_sltiu(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
-            builder.build_int_compare(IntPredicate::ULT, a, b, "sltiu")
+        self.compile_immediate(registers, immediate, |builder, context, a, b| {
+            let cmp = builder.build_int_compare(IntPredicate::ULT, a, b, "sltiu");
+            builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
 
@@ -2189,6 +2191,37 @@ mod tests {
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_addi_after_beq(runner: Runner) {
+        use Instruction::*;
+        let instructions = [
+            Target(BranchTarget { identifier: 176 }),
+            Lh(Load {
+                offset: 8728,
+                rs: 24,
+                rd: 24,
+            }),
+            Beq(Branch {
+                target: 255,
+                rs1: 31,
+                rs2: 31,
+            }),
+            Addi(Immediate {
+                value: 6168,
+                rs: 24,
+                rd: 24,
+            }),
+            Target(BranchTarget { identifier: 255 }),
+            Addi(Immediate {
+                value: 0,
+                rs: 24,
+                rd: 24,
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
     fn test_bug1(runner: Runner) {
         let assembler = Assembler::new();
         let instructions = assembler.disassemble(&[10, 0, 43, 45]);
@@ -2287,6 +2320,21 @@ mod tests {
         let data = [
             19, 25, 176, 25, 255, 25, 255, 255, 255, 255, 25, 25, 255, 12, 255, 25, 255, 12, 25,
             255, 255, 25, 25,
+        ];
+        let instructions = assembler.disassemble(&data);
+        let mut memory = data.to_vec();
+        runner(&instructions, &mut memory);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_bug12(runner: Runner) {
+        let assembler = Assembler::new();
+        let data = [
+            25, 176, 19, 24, 34, 24, 24, 24, 255, 255, 255, 255, 24, 24, 24, 24, 24, 24, 24, 24,
+            24, 24, 24, 24, 24, 24, 24, 24, 24, 9, 9, 235, 24, 90, 0, 0, 0, 24, 24, 24, 24, 235,
+            176, 25, 255, 25, 19, 25, 126, 25, 176, 25, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+            24, 24, 24, 24, 235, 176, 25, 255, 25, 19, 25, 126, 25, 176, 25, 255, 25, 19, 25, 25,
+            25, 0, 0, 0, 0, 24, 24, 24, 24, 24, 24, 24, 25, 126,
         ];
         let instructions = assembler.disassemble(&data);
         println!("{:?}", instructions);
