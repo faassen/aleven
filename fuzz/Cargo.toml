@@ -24,3 +24,10 @@ name = "llvm"
 path = "fuzz_targets/llvm.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "interpreter"
+path = "fuzz_targets/interpreter.rs"
+test = false
+doc = false
+

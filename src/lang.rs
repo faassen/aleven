@@ -94,6 +94,12 @@ impl Processor {
     }
 }
 
+impl Default for Processor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Instruction {
     pub fn execute(
         &self,
@@ -365,16 +371,13 @@ impl Program {
 
     pub fn execute(&self, processor: &mut Processor, memory: &mut [u8]) {
         let targets = Program::targets(&self.instructions);
-        loop {
+        while processor.pc < self.instructions.len() {
             let instruction = &self.instructions[processor.pc];
             instruction.execute(processor, memory, &targets);
             if processor.jumped {
                 processor.jumped = false;
             } else {
                 processor.pc += 1;
-            }
-            if processor.pc >= self.instructions.len() {
-                break;
             }
         }
     }
