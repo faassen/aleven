@@ -31,3 +31,9 @@ path = "fuzz_targets/interpreter.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "both"
+path = "fuzz_targets/both.rs"
+test = false
+doc = false
+
