@@ -23,7 +23,8 @@ pub struct CodeGen<'ctx> {
 
 type Registers<'a> = [IntValue<'a>; 32];
 
-type Build2<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
+type Build2<'ctx> =
+    fn(&Builder<'ctx>, &'ctx Context, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
 type LoadValue<'ctx> = fn(&Builder<'ctx>, &'ctx Context, PointerValue<'ctx>) -> IntValue<'ctx>;
 type StoreValue<'ctx> = fn(&Builder<'ctx>, &Context, PointerValue<'ctx>, IntValue<'ctx>);
 
@@ -158,7 +159,7 @@ impl<'ctx> CodeGen<'ctx> {
         let i16_type = self.context.i16_type();
         let value = i16_type.const_int(immediate.value as u64, false);
         let rs = registers[immediate.rs as usize];
-        let result = f(&self.builder, rs, value);
+        let result = f(&self.builder, &self.context, rs, value);
         registers[immediate.rd as usize] = result;
     }
 
@@ -183,60 +184,60 @@ impl<'ctx> CodeGen<'ctx> {
             )
             .into_int_value();
         let rs = registers[immediate.rs as usize];
-        let result = f(&self.builder, rs, mvalue);
+        let result = f(&self.builder, self.context, rs, mvalue);
         registers[immediate.rd as usize] = result;
     }
 
     fn compile_addi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, a, b| {
+        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_int_add(a, b, "addi")
         });
     }
 
     fn compile_slti(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, a, b| {
+        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_int_compare(IntPredicate::SLT, a, b, "slti")
         });
     }
 
     fn compile_sltiu(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, a, b| {
+        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_int_compare(IntPredicate::ULT, a, b, "sltiu")
         });
     }
 
     fn compile_andi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, a, b| {
+        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_and(a, b, "andi")
         });
     }
 
     fn compile_ori(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, a, b| {
+        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_or(a, b, "ori")
         });
     }
 
     fn compile_xori(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate(registers, immediate, |builder, a, b| {
+        self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_xor(a, b, "xori")
         });
     }
 
     fn compile_slli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate_shift(registers, immediate, |builder, a, b| {
+        self.compile_immediate_shift(registers, immediate, |builder, _context, a, b| {
             builder.build_left_shift(a, b, "slli")
         });
     }
 
     fn compile_srli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate_shift(registers, immediate, |builder, a, b| {
+        self.compile_immediate_shift(registers, immediate, |builder, _context, a, b| {
             builder.build_right_shift(a, b, false, "srli")
         });
     }
 
     fn compile_srai(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
-        self.compile_immediate_shift(registers, immediate, |builder, a, b| {
+        self.compile_immediate_shift(registers, immediate, |builder, _context, a, b| {
             builder.build_right_shift(a, b, true, "srai")
         });
     }
@@ -249,7 +250,7 @@ impl<'ctx> CodeGen<'ctx> {
     ) {
         let rs1 = registers[register.rs1 as usize];
         let rs2 = registers[register.rs2 as usize];
-        let result = f(&self.builder, rs1, rs2);
+        let result = f(&self.builder, self.context, rs1, rs2);
         registers[register.rd as usize] = result;
     }
 
@@ -274,57 +275,59 @@ impl<'ctx> CodeGen<'ctx> {
                 "max shift",
             )
             .into_int_value();
-        let result = f(&self.builder, rs1, mvalue);
+        let result = f(&self.builder, self.context, rs1, mvalue);
         registers[register.rd as usize] = result;
     }
 
     fn compile_add(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register(registers, register, |builder, a, b| {
+        self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_int_add(a, b, "add")
         });
     }
     fn compile_sub(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register(registers, register, |builder, a, b| {
+        self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_int_sub(a, b, "sub")
         });
     }
     fn compile_slt(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register(registers, register, |builder, a, b| {
-            builder.build_int_compare(IntPredicate::SLT, a, b, "slt")
+        self.compile_register(registers, register, |builder, context, a, b| {
+            let cmp = builder.build_int_compare(IntPredicate::SLT, a, b, "slt");
+            builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
     fn compile_sltu(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register(registers, register, |builder, a, b| {
-            builder.build_int_compare(IntPredicate::ULT, a, b, "sltu")
+        self.compile_register(registers, register, |builder, context, a, b| {
+            let cmp = builder.build_int_compare(IntPredicate::ULT, a, b, "sltu");
+            builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
     fn compile_and(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register(registers, register, |builder, a, b| {
+        self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_and(a, b, "and")
         });
     }
     fn compile_or(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register(registers, register, |builder, a, b| {
+        self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_or(a, b, "and")
         });
     }
     fn compile_xor(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register(registers, register, |builder, a, b| {
+        self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_xor(a, b, "and")
         });
     }
     fn compile_sll(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register_shift(registers, register, |builder, a, b| {
+        self.compile_register_shift(registers, register, |builder, _context, a, b| {
             builder.build_left_shift(a, b, "and")
         });
     }
     fn compile_srl(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register_shift(registers, register, |builder, a, b| {
+        self.compile_register_shift(registers, register, |builder, _context, a, b| {
             builder.build_right_shift(a, b, false, "and")
         });
     }
     fn compile_sra(&self, registers: &mut Registers<'ctx>, register: &Register) {
-        self.compile_register_shift(registers, register, |builder, a, b| {
+        self.compile_register_shift(registers, register, |builder, _context, a, b| {
             builder.build_right_shift(a, b, true, "and")
         });
     }
@@ -2263,6 +2266,27 @@ mod tests {
             20, 77, 22, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 0,
             146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146,
             146, 22, 22, 0, 0, 0, 0, 0, 233, 0,
+        ];
+        let instructions = assembler.disassemble(&data);
+        let mut memory = data.to_vec();
+        runner(&instructions, &mut memory);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_bug10(runner: Runner) {
+        let assembler = Assembler::new();
+        let data = [25, 24, 24, 24, 24, 24];
+        let instructions = assembler.disassemble(&data);
+        let mut memory = data.to_vec();
+        runner(&instructions, &mut memory);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_bug11(runner: Runner) {
+        let assembler = Assembler::new();
+        let data = [
+            19, 25, 176, 25, 255, 25, 255, 255, 255, 255, 25, 25, 255, 12, 255, 25, 255, 12, 25,
+            255, 255, 25, 25,
         ];
         let instructions = assembler.disassemble(&data);
         println!("{:?}", instructions);

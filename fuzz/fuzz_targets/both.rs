@@ -10,6 +10,7 @@ use libfuzzer_sys::fuzz_target;
 fuzz_target!(|data: &[u8]| {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(data);
+    let instructions = Program::cleanup(&instructions);
 
     let mut memory_llvm = data.to_vec();
     let mut memory_interpreter = data.to_vec();

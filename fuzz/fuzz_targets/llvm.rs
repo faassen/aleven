@@ -1,6 +1,7 @@
 #![no_main]
 extern crate aleven;
 use aleven::assemble::Assembler;
+use aleven::lang::Program;
 use aleven::llvm::CodeGen;
 use inkwell::context::Context;
 use inkwell::OptimizationLevel;
@@ -9,6 +10,7 @@ use libfuzzer_sys::fuzz_target;
 fuzz_target!(|data: &[u8]| {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(data);
+    let instructions = Program::cleanup(&instructions);
 
     let context = Context::create();
     let module = context.create_module("program");
