@@ -106,7 +106,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.build_return(None);
 
         // self.module.print_to_stderr();
-        save_asm(&self.module);
+        // save_asm(&self.module);
 
         unsafe { self.execution_engine.get_function("program").ok() }
     }
