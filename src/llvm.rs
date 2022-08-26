@@ -72,42 +72,42 @@ impl<'ctx> CodeGen<'ctx> {
             next_instr_block = blocks_iter.next().unwrap().1;
             let mut branched = false;
             match instruction {
-                Instruction::Addi(immediate) => self.compile_addi(&mut registers, immediate),
-                Instruction::Slti(immediate) => self.compile_slti(&mut registers, immediate),
-                Instruction::Sltiu(immediate) => self.compile_sltiu(&mut registers, immediate),
-                Instruction::Andi(immediate) => self.compile_andi(&mut registers, immediate),
-                Instruction::Ori(immediate) => self.compile_ori(&mut registers, immediate),
-                Instruction::Xori(immediate) => self.compile_xori(&mut registers, immediate),
-                Instruction::Slli(immediate) => self.compile_slli(&mut registers, immediate),
-                Instruction::Srli(immediate) => self.compile_srli(&mut registers, immediate),
-                Instruction::Srai(immediate) => self.compile_srai(&mut registers, immediate),
-                Instruction::Add(register) => self.compile_add(&mut registers, register),
-                Instruction::Sub(register) => self.compile_sub(&mut registers, register),
-                Instruction::Slt(register) => self.compile_slt(&mut registers, register),
-                Instruction::Sltu(register) => self.compile_sltu(&mut registers, register),
-                Instruction::And(register) => self.compile_and(&mut registers, register),
-                Instruction::Or(register) => self.compile_or(&mut registers, register),
-                Instruction::Xor(register) => self.compile_xor(&mut registers, register),
-                Instruction::Sll(register) => self.compile_sll(&mut registers, register),
-                Instruction::Srl(register) => self.compile_srl(&mut registers, register),
-                Instruction::Sra(register) => self.compile_sra(&mut registers, register),
+                Instruction::Addi(immediate) => self.compile_addi(registers, immediate),
+                Instruction::Slti(immediate) => self.compile_slti(registers, immediate),
+                Instruction::Sltiu(immediate) => self.compile_sltiu(registers, immediate),
+                Instruction::Andi(immediate) => self.compile_andi(registers, immediate),
+                Instruction::Ori(immediate) => self.compile_ori(registers, immediate),
+                Instruction::Xori(immediate) => self.compile_xori(registers, immediate),
+                Instruction::Slli(immediate) => self.compile_slli(registers, immediate),
+                Instruction::Srli(immediate) => self.compile_srli(registers, immediate),
+                Instruction::Srai(immediate) => self.compile_srai(registers, immediate),
+                Instruction::Add(register) => self.compile_add(registers, register),
+                Instruction::Sub(register) => self.compile_sub(registers, register),
+                Instruction::Slt(register) => self.compile_slt(registers, register),
+                Instruction::Sltu(register) => self.compile_sltu(registers, register),
+                Instruction::And(register) => self.compile_and(registers, register),
+                Instruction::Or(register) => self.compile_or(registers, register),
+                Instruction::Xor(register) => self.compile_xor(registers, register),
+                Instruction::Sll(register) => self.compile_sll(registers, register),
+                Instruction::Srl(register) => self.compile_srl(registers, register),
+                Instruction::Sra(register) => self.compile_sra(registers, register),
                 Instruction::Lb(load) => {
-                    self.compile_lb(&mut registers, ptr, load, memory_size, function);
+                    self.compile_lb(registers, ptr, load, memory_size, function);
                 }
                 Instruction::Lbu(load) => {
-                    self.compile_lbu(&mut registers, ptr, load, memory_size, function);
+                    self.compile_lbu(registers, ptr, load, memory_size, function);
                 }
                 Instruction::Sb(store) => {
-                    self.compile_sb(&registers, ptr, store, memory_size, function);
+                    self.compile_sb(registers, ptr, store, memory_size, function);
                 }
                 Instruction::Lh(load) => {
-                    self.compile_lh(&mut registers, ptr, load, memory_size, function);
+                    self.compile_lh(registers, ptr, load, memory_size, function);
                 }
                 Instruction::Sh(store) => {
-                    self.compile_sh(&registers, ptr, store, memory_size, function);
+                    self.compile_sh(registers, ptr, store, memory_size, function);
                 }
                 Instruction::Beq(branch) => {
-                    self.compile_beq(&registers, branch, next_instr_block, &targets);
+                    self.compile_beq(registers, branch, next_instr_block, &targets);
                     branched = true;
                 }
                 Instruction::Target(_target) => {
@@ -618,21 +618,6 @@ impl<'ctx> CodeGen<'ctx> {
         } else {
             self.builder.build_unconditional_branch(next_block);
         }
-    }
-
-    fn max_shift(
-        builder: Builder<'ctx>,
-        value: IntValue<'ctx>,
-        max: IntValue<'ctx>,
-    ) -> IntValue<'ctx> {
-        builder
-            .build_select(
-                builder.build_int_compare(IntPredicate::UGE, value, max, ">= max"),
-                value,
-                max,
-                "max_shift",
-            )
-            .into_int_value()
     }
 }
 

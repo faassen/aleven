@@ -37,6 +37,12 @@ fn opcode(instruction: &Instruction) -> u8 {
     opcode.encode()
 }
 
+impl Default for Assembler {
+    fn default() -> Self {
+        Assembler::new()
+    }
+}
+
 impl Assembler {
     pub fn new() -> Assembler {
         Assembler {}
