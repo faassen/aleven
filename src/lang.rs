@@ -285,8 +285,12 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let address = ((processor.registers[rs as usize] + offset) * 2) as usize & 0xfffe;
-                let value = LittleEndian::read_i16(&memory[address..]);
-                processor.registers[rd as usize] = value;
+                let result = if address < memory.len() {
+                    LittleEndian::read_i16(&memory[address..])
+                } else {
+                    0
+                };
+                processor.registers[rd as usize] = result;
             }
             Instruction::Lb(load) => {
                 let offset = load.offset;

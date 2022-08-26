@@ -26,6 +26,7 @@ type Registers<'a> = [IntValue<'a>; 32];
 
 type Build2<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
 type LoadValue<'ctx> = fn(&Builder<'ctx>, IntType<'ctx>, PointerValue<'ctx>) -> IntValue<'ctx>;
+type GetPointer<'ctx> = fn(&Builder<'ctx>, IntType<'ctx>, PointerValue<'ctx>) -> PointerValue<'ctx>;
 
 impl<'ctx> CodeGen<'ctx> {
     fn compile_program(
@@ -86,7 +87,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.compile_sb(&registers, ptr, store);
                 }
                 Instruction::Lh(load) => {
-                    self.compile_lh(&mut registers, ptr, load);
+                    self.compile_lh(&mut registers, ptr, load, memory_size, function);
                 }
                 Instruction::Sh(store) => {
                     self.compile_sh(&registers, ptr, store);
@@ -329,7 +330,7 @@ impl<'ctx> CodeGen<'ctx> {
         });
     }
 
-    fn compile_in_bounds(
+    fn compile_load_in_bounds(
         &self,
         registers: &mut Registers<'ctx>,
         ptr: PointerValue<'ctx>,
@@ -387,7 +388,7 @@ impl<'ctx> CodeGen<'ctx> {
         memory_size: u16,
         function: FunctionValue,
     ) {
-        self.compile_in_bounds(
+        self.compile_load_in_bounds(
             registers,
             ptr,
             load,
@@ -408,7 +409,7 @@ impl<'ctx> CodeGen<'ctx> {
         memory_size: u16,
         function: FunctionValue,
     ) {
-        self.compile_in_bounds(
+        self.compile_load_in_bounds(
             registers,
             ptr,
             load,
@@ -438,17 +439,26 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.build_store(address, truncated);
     }
 
-    fn compile_lh(&self, registers: &mut Registers<'ctx>, ptr: PointerValue<'ctx>, load: &Load) {
+    fn compile_lh(
+        &self,
+        registers: &mut Registers<'ctx>,
+        ptr: PointerValue<'ctx>,
+        load: &Load,
+        memory_size: u16,
+        function: FunctionValue,
+    ) {
         let i16_type = self.context.i16_type();
         let i16_ptr_type = i16_type.ptr_type(AddressSpace::Generic);
-        let i16_ptr = self.builder.build_pointer_cast(ptr, i16_ptr_type, "lh_ptr");
-        let offset = self.context.i16_type().const_int(load.offset as u64, false);
-        let index = self
-            .builder
-            .build_int_add(offset, registers[load.rs as usize], "index");
-        let address = unsafe { self.builder.build_gep(i16_ptr, &[index], "gep index") };
-        let value = self.builder.build_load(address, "lh");
-        registers[load.rd as usize] = value.into_int_value();
+        let ptr = self.builder.build_pointer_cast(ptr, i16_ptr_type, "lh_ptr");
+
+        self.compile_load_in_bounds(
+            registers,
+            ptr,
+            load,
+            memory_size / 2,
+            function,
+            |builder, _i16_type, address| builder.build_load(address, "lh").into_int_value(),
+        );
     }
 
     fn compile_sh(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
@@ -1056,6 +1066,25 @@ mod tests {
         runner(&instructions, &mut memory);
         assert_eq!(memory[20], 2);
         assert_eq!(memory[21], 1);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_lh_out_of_bounds(runner: Runner) {
+        let instructions = [
+            Instruction::Lh(Load {
+                offset: 65, // out of bounds
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Sh(Store {
+                offset: 10,
+                rs: 2,
+                rd: 3, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+        assert_eq!(memory, [0u8; 64]);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
