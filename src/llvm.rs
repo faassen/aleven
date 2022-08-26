@@ -14,11 +14,11 @@ use std::error::Error;
 
 type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
 
-struct CodeGen<'ctx> {
-    context: &'ctx Context,
-    module: Module<'ctx>,
-    builder: Builder<'ctx>,
-    execution_engine: ExecutionEngine<'ctx>,
+pub struct CodeGen<'ctx> {
+    pub context: &'ctx Context,
+    pub module: Module<'ctx>,
+    pub builder: Builder<'ctx>,
+    pub execution_engine: ExecutionEngine<'ctx>,
 }
 
 type Registers<'a> = [IntValue<'a>; 32];
@@ -28,7 +28,7 @@ type LoadValue<'ctx> = fn(&Builder<'ctx>, &'ctx Context, PointerValue<'ctx>) -> 
 type StoreValue<'ctx> = fn(&Builder<'ctx>, &Context, PointerValue<'ctx>, IntValue<'ctx>);
 
 impl<'ctx> CodeGen<'ctx> {
-    fn compile_program(
+    pub fn compile_program(
         &self,
         instructions: &[Instruction],
         memory_size: u16,
@@ -669,6 +669,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::assemble::Assembler;
     use crate::lang::BranchTarget;
     use crate::lang::{Processor, Program};
     use byteorder::{ByteOrder, LittleEndian};
@@ -2182,5 +2183,13 @@ mod tests {
         memory[2] = 30;
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 30);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_bug1(runner: Runner) {
+        let assembler = Assembler::new();
+        let instructions = assembler.disassemble(&[10, 0, 43, 45]);
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
     }
 }

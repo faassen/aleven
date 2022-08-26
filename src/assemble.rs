@@ -119,6 +119,10 @@ impl Opcode {
     }
 }
 
+fn clampreg(value: u8) -> u8 {
+    value % 32
+}
+
 impl ValueDisassembler for Immediate {
     fn size() -> usize {
         4
@@ -127,8 +131,8 @@ impl ValueDisassembler for Immediate {
     fn disassemble(input: &[u8]) -> Immediate {
         Immediate {
             value: bytes_to_i16(&input[0..2]),
-            rs: input[2],
-            rd: input[3],
+            rs: clampreg(input[2]),
+            rd: clampreg(input[3]),
         }
     }
 }
@@ -148,8 +152,8 @@ impl ValueDisassembler for Load {
     fn disassemble(input: &[u8]) -> Load {
         Load {
             offset: bytes_to_i16(&input[0..2]),
-            rs: input[2],
-            rd: input[3],
+            rs: clampreg(input[2]),
+            rd: clampreg(input[3]),
         }
     }
 }
@@ -169,8 +173,8 @@ impl ValueDisassembler for Store {
     fn disassemble(input: &[u8]) -> Self {
         Store {
             offset: bytes_to_i16(&input[0..2]),
-            rs: input[2],
-            rd: input[3],
+            rs: clampreg(input[2]),
+            rd: clampreg(input[3]),
         }
     }
 }
@@ -189,9 +193,9 @@ impl ValueDisassembler for Register {
     }
     fn disassemble(input: &[u8]) -> Self {
         Register {
-            rs1: input[0],
-            rs2: input[1],
-            rd: input[2],
+            rs1: clampreg(input[0]),
+            rs2: clampreg(input[1]),
+            rd: clampreg(input[2]),
         }
     }
 }
@@ -211,8 +215,8 @@ impl ValueDisassembler for Branch {
     fn disassemble(input: &[u8]) -> Self {
         Branch {
             target: input[0],
-            rs1: input[1],
-            rs2: input[2],
+            rs1: clampreg(input[1]),
+            rs2: clampreg(input[2]),
         }
     }
 }
@@ -305,5 +309,21 @@ mod tests {
         let assembler = Assembler::new();
         let instructions = assembler.disassemble(&bytes);
         assert_eq!(instructions.len(), 0);
+    }
+
+    #[test]
+    fn test_disassemble_register_out_of_range() {
+        let bytes = vec![0, 10, 0, 43, 0];
+        let assembler = Assembler::new();
+        let instructions = assembler.disassemble(&bytes);
+        assert_eq!(instructions.len(), 1);
+        assert_eq!(
+            instructions[0],
+            Instruction::Addi(Immediate {
+                value: 10,
+                rs: 11, // 43 clamped to 32
+                rd: 0,
+            })
+        );
     }
 }

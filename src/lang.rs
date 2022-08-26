@@ -385,9 +385,11 @@ impl Program {
         let targets = Program::targets(instructions);
         let mut result = Vec::new();
 
+        use Instruction::*;
+
         for (index, instruction) in instructions.iter().enumerate() {
             match instruction {
-                Instruction::Beq(branch) => {
+                Beq(branch) => {
                     let target = branch.target;
                     let target_index = targets.get(&target);
                     if let Some(target_index) = target_index {
