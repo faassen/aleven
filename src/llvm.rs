@@ -2248,4 +2248,16 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
     }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_bug8(runner: Runner) {
+        let assembler = Assembler::new();
+        let instructions = assembler.disassemble(&[
+            0, 0, 234, 249, 185, 255, 230, 5, 191, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+            150, 150, 150, 150, 150, 150, 150, 150, 22, 6, 70, 0, 22,
+        ]);
+        println!("{:?}", instructions);
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+    }
 }

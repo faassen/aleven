@@ -287,11 +287,10 @@ impl Instruction {
                 processor.registers[rd as usize] = result;
             }
             Instruction::Lh(load) => {
-                let offset = load.offset as usize;
+                let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
-                let start_address = processor.registers[rs as usize] as usize;
-                let address = ((start_address.wrapping_add(offset)) * 2) & 0xfffe;
+                let address = address_h(processor, rs, offset);
                 let result = if address < memory.len() {
                     LittleEndian::read_i16(&memory[address..])
                 } else {
@@ -300,11 +299,10 @@ impl Instruction {
                 processor.registers[rd as usize] = result;
             }
             Instruction::Lb(load) => {
-                let offset = load.offset as usize;
+                let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
-                let start_address = processor.registers[rs as usize] as usize;
-                let address = start_address.wrapping_add(offset);
+                let address = address_b(processor, rs, offset);
                 let result = if address < memory.len() {
                     memory[address]
                 } else {
@@ -313,11 +311,10 @@ impl Instruction {
                 processor.registers[rd as usize] = result as i8 as i16;
             }
             Instruction::Lbu(load) => {
-                let offset = load.offset as usize;
+                let offset = load.offset;
                 let rs = load.rs;
                 let rd = load.rd;
-                let start_address = processor.registers[rs as usize] as usize;
-                let address = start_address.wrapping_add(offset);
+                let address = address_b(processor, rs, offset);
                 let result = if address < memory.len() {
                     memory[address]
                 } else {
@@ -326,11 +323,10 @@ impl Instruction {
                 processor.registers[rd as usize] = result as u16 as i16;
             }
             Instruction::Sh(store) => {
-                let offset = store.offset as usize;
+                let offset = store.offset;
                 let rs = store.rs;
                 let rd = store.rd;
-                let start_address = processor.registers[rd as usize] as usize;
-                let address = ((start_address.wrapping_add(offset)) * 2) & 0xfffe;
+                let address = address_h(processor, rd, offset);
                 if address < memory.len() {
                     LittleEndian::write_i16(
                         &mut memory[address..],
@@ -339,11 +335,10 @@ impl Instruction {
                 }
             }
             Instruction::Sb(store) => {
-                let offset = store.offset as usize;
+                let offset = store.offset;
                 let rs = store.rs;
                 let rd = store.rd;
-                let start_address = processor.registers[rd as usize] as usize;
-                let address = start_address.wrapping_add(offset);
+                let address = address_b(processor, rd, offset);
                 if address < memory.len() {
                     memory[address] = processor.registers[rs as usize] as u8;
                 }
@@ -365,6 +360,16 @@ impl Instruction {
             }
         }
     }
+}
+
+fn address_b(processor: &Processor, rs: u8, offset: u16) -> usize {
+    let start_address = processor.registers[rs as usize] as u16 as usize;
+    start_address.wrapping_add(offset as usize)
+}
+
+fn address_h(processor: &Processor, rs: u8, offset: u16) -> usize {
+    let start_address = processor.registers[rs as usize] as u16 as usize;
+    start_address.wrapping_add(offset as usize) * 2
 }
 
 impl Program {
