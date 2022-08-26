@@ -54,8 +54,7 @@ impl<'ctx> CodeGen<'ctx> {
                 .build_store(alloc_a, i16_type.const_int(0, false));
             registers.push(alloc_a);
         }
-        let mut registers = registers.as_mut_slice();
-        // let mut registers: Registers = [i16_type.const_int(0, false); 32];
+        let registers = registers.as_mut_slice();
 
         let (blocks, targets) = self.get_blocks(function, instructions);
 
