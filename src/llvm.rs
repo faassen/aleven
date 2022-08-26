@@ -89,7 +89,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.compile_lh(&mut registers, ptr, load, memory_size, function);
                 }
                 Instruction::Sh(store) => {
-                    self.compile_sh(&registers, ptr, store);
+                    self.compile_sh(&registers, ptr, store, memory_size, function);
                 }
                 Instruction::Beq(branch) => {
                     block = blocks_iter.next().unwrap().1;
@@ -415,7 +415,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         store_branch(
             &self.builder,
-            &self.context,
+            self.context,
             address,
             registers[store.rs as usize],
         );
@@ -518,20 +518,28 @@ impl<'ctx> CodeGen<'ctx> {
         );
     }
 
-    fn compile_sh(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
+    fn compile_sh(
+        &self,
+        registers: &Registers<'ctx>,
+        ptr: PointerValue<'ctx>,
+        store: &Store,
+        memory_size: u16,
+        function: FunctionValue,
+    ) {
         let i16_type = self.context.i16_type();
         let i16_ptr_type = i16_type.ptr_type(AddressSpace::Generic);
         let i16_ptr = self.builder.build_pointer_cast(ptr, i16_ptr_type, "sh_ptr");
-        let offset = self
-            .context
-            .i16_type()
-            .const_int(store.offset as u64, false);
-        let index = self
-            .builder
-            .build_int_add(offset, registers[store.rd as usize], "index");
-        let address = unsafe { self.builder.build_gep(i16_ptr, &[index], "gep index") };
-        self.builder
-            .build_store(address, registers[store.rs as usize]);
+
+        self.compile_store_in_bounds(
+            registers,
+            i16_ptr,
+            store,
+            memory_size / 2,
+            function,
+            |builder, _context, address, value| {
+                builder.build_store(address, value);
+            },
+        );
     }
 
     fn compile_beq(
@@ -1186,6 +1194,29 @@ mod tests {
         runner(&instructions, &mut memory);
         assert_eq!(memory[22], 2);
         assert_eq!(memory[23], 1);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sh_out_of_bounds(runner: Runner) {
+        let instructions = [
+            Instruction::Lh(Load {
+                offset: 0,
+                rs: 1,
+                rd: 2,
+            }),
+            // it's not possible to misalign this as it's already even
+            Instruction::Sh(Store {
+                offset: 32, // should be out of bounds as x 2
+                rs: 2,
+                rd: 3, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = 2;
+        memory[1] = 1;
+        let expected = memory;
+        runner(&instructions, &mut memory);
+        assert_eq!(memory, expected);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]

@@ -321,7 +321,12 @@ impl Instruction {
                 let rs = store.rs;
                 let rd = store.rd;
                 let address = ((processor.registers[rd as usize] + offset) * 2) as usize & 0xfffe;
-                LittleEndian::write_i16(&mut memory[address..], processor.registers[rs as usize]);
+                if address < memory.len() {
+                    LittleEndian::write_i16(
+                        &mut memory[address..],
+                        processor.registers[rs as usize],
+                    );
+                }
             }
             Instruction::Sb(store) => {
                 let offset = store.offset;
