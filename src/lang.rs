@@ -291,7 +291,7 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let start_address = processor.registers[rs as usize] as usize;
-                let address = ((start_address + offset) * 2) & 0xfffe;
+                let address = ((start_address.wrapping_add(offset)) * 2) & 0xfffe;
                 let result = if address < memory.len() {
                     LittleEndian::read_i16(&memory[address..])
                 } else {
@@ -304,7 +304,7 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let start_address = processor.registers[rs as usize] as usize;
-                let address = start_address + offset;
+                let address = start_address.wrapping_add(offset);
                 let result = if address < memory.len() {
                     memory[address]
                 } else {
@@ -317,7 +317,7 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let start_address = processor.registers[rs as usize] as usize;
-                let address = start_address + offset;
+                let address = start_address.wrapping_add(offset);
                 let result = if address < memory.len() {
                     memory[address]
                 } else {
@@ -330,7 +330,7 @@ impl Instruction {
                 let rs = store.rs;
                 let rd = store.rd;
                 let start_address = processor.registers[rd as usize] as usize;
-                let address = ((start_address + offset) * 2) & 0xfffe;
+                let address = ((start_address.wrapping_add(offset)) * 2) & 0xfffe;
                 if address < memory.len() {
                     LittleEndian::write_i16(
                         &mut memory[address..],
@@ -343,7 +343,7 @@ impl Instruction {
                 let rs = store.rs;
                 let rd = store.rd;
                 let start_address = processor.registers[rd as usize] as usize;
-                let address = start_address + offset;
+                let address = start_address.wrapping_add(offset);
                 if address < memory.len() {
                     memory[address] = processor.registers[rs as usize] as u8;
                 }
