@@ -26,7 +26,7 @@ type Registers<'a> = [IntValue<'a>; 32];
 
 type Build2<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
 type LoadValue<'ctx> = fn(&Builder<'ctx>, IntType<'ctx>, PointerValue<'ctx>) -> IntValue<'ctx>;
-type GetPointer<'ctx> = fn(&Builder<'ctx>, IntType<'ctx>, PointerValue<'ctx>) -> PointerValue<'ctx>;
+type StoreValue<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntType<'ctx>, PointerValue<'ctx>);
 
 impl<'ctx> CodeGen<'ctx> {
     fn compile_program(
@@ -84,7 +84,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.compile_lbu(&mut registers, ptr, load, memory_size, function);
                 }
                 Instruction::Sb(store) => {
-                    self.compile_sb(&registers, ptr, store);
+                    self.compile_sb(&registers, ptr, store, memory_size, function);
                 }
                 Instruction::Lh(load) => {
                     self.compile_lh(&mut registers, ptr, load, memory_size, function);
@@ -339,16 +339,16 @@ impl<'ctx> CodeGen<'ctx> {
         function: FunctionValue,
         load_branch: LoadValue<'ctx>,
     ) {
-        let lb_block = self.context.append_basic_block(function, "lb");
-        self.builder.build_unconditional_branch(lb_block);
-        self.builder.position_at_end(lb_block);
+        let load_block = self.context.append_basic_block(function, "load");
+        self.builder.build_unconditional_branch(load_block);
+        self.builder.position_at_end(load_block);
 
         let offset = self.context.i16_type().const_int(load.offset as u64, false);
         let index = self
             .builder
             .build_int_add(offset, registers[load.rs as usize], "index");
 
-        let load_block = self.context.append_basic_block(function, "load");
+        let then_block = self.context.append_basic_block(function, "load");
         let else_block = self.context.append_basic_block(function, "else");
         let end_block = self.context.append_basic_block(function, "end_load");
 
@@ -357,9 +357,9 @@ impl<'ctx> CodeGen<'ctx> {
             self.builder
                 .build_int_compare(IntPredicate::ULT, index, memory_size, "in_bounds");
         self.builder
-            .build_conditional_branch(in_bounds, load_block, else_block);
+            .build_conditional_branch(in_bounds, then_block, else_block);
 
-        self.builder.position_at_end(load_block);
+        self.builder.position_at_end(then_block);
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
 
         let load_value = load_branch(&self.builder, self.context.i16_type(), address);
@@ -375,9 +375,55 @@ impl<'ctx> CodeGen<'ctx> {
             .builder
             .build_phi(self.context.i16_type(), "load_result");
 
-        phi.add_incoming(&[(&load_value, load_block), (&else_value, else_block)]);
+        phi.add_incoming(&[(&load_value, then_block), (&else_value, else_block)]);
 
         registers[load.rd as usize] = phi.as_basic_value().into_int_value();
+    }
+
+    fn compile_store_in_bounds(
+        &self,
+        registers: &Registers<'ctx>,
+        ptr: PointerValue<'ctx>,
+        store: &Store,
+        memory_size: u16,
+        function: FunctionValue,
+        store_branch: StoreValue<'ctx>,
+    ) {
+        let store_block = self.context.append_basic_block(function, "store");
+        self.builder.build_unconditional_branch(store_block);
+        self.builder.position_at_end(store_block);
+
+        let offset = self
+            .context
+            .i16_type()
+            .const_int(store.offset as u64, false);
+        let index = self
+            .builder
+            .build_int_add(offset, registers[store.rd as usize], "index");
+
+        let then_block = self.context.append_basic_block(function, "store");
+        let end_block = self.context.append_basic_block(function, "end_store");
+
+        let memory_size = self.context.i16_type().const_int(memory_size as u64, false);
+        let in_bounds =
+            self.builder
+                .build_int_compare(IntPredicate::ULT, index, memory_size, "in_bounds");
+        self.builder
+            .build_conditional_branch(in_bounds, then_block, end_block);
+
+        self.builder.position_at_end(then_block);
+        let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
+
+        store_branch(
+            &self.builder,
+            registers[store.rs as usize],
+            self.context.i8_type(),
+            address,
+        );
+
+        self.builder.build_unconditional_branch(end_block);
+
+        self.builder.position_at_end(end_block);
     }
 
     fn compile_lb(
@@ -422,21 +468,25 @@ impl<'ctx> CodeGen<'ctx> {
         );
     }
 
-    fn compile_sb(&self, registers: &Registers, ptr: PointerValue, store: &Store) {
-        let offset = self
-            .context
-            .i16_type()
-            .const_int(store.offset as u64, false);
-        let index = self
-            .builder
-            .build_int_add(offset, registers[store.rd as usize], "index");
-        let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
-        let truncated = self.builder.build_int_truncate(
-            registers[store.rs as usize],
-            self.context.i8_type(),
-            "truncated",
+    fn compile_sb(
+        &self,
+        registers: &Registers<'ctx>,
+        ptr: PointerValue<'ctx>,
+        store: &Store,
+        memory_size: u16,
+        function: FunctionValue,
+    ) {
+        self.compile_store_in_bounds(
+            registers,
+            ptr,
+            store,
+            memory_size,
+            function,
+            |builder, value, int_type, address| {
+                let truncated = builder.build_int_truncate(value, int_type, "truncated");
+                builder.build_store(address, truncated);
+            },
         );
-        self.builder.build_store(address, truncated);
     }
 
     fn compile_lh(
@@ -982,6 +1032,27 @@ mod tests {
         memory[0] = 11;
         runner(&instructions, &mut memory);
         assert_eq!(memory[10], 11);
+    }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_sb_out_of_bounds(runner: Runner) {
+        let instructions = [
+            Instruction::Lb(Load {
+                offset: 0,
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Sb(Store {
+                offset: 65,
+                rs: 2,
+                rd: 3, // defaults to 0
+            }),
+        ];
+        let mut memory = [0u8; 64];
+        memory[0] = 11;
+        let expected = memory;
+        runner(&instructions, &mut memory);
+        assert_eq!(memory, expected);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]

@@ -328,7 +328,9 @@ impl Instruction {
                 let rs = store.rs;
                 let rd = store.rd;
                 let address = (processor.registers[rd as usize] + offset) as usize;
-                memory[address] = processor.registers[rs as usize] as u8;
+                if address < memory.len() {
+                    memory[address] = processor.registers[rs as usize] as u8;
+                }
             }
             Instruction::Beq(branch) => {
                 let rs1 = branch.rs1;
