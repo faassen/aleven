@@ -1,6 +1,4 @@
-- Out of bounds check for sb
-
-- Out of bounds checks for sh and lh, due to multiply by 2
+- More comparison operations
 
 - Fuzz testing
 
