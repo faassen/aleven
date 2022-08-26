@@ -7,7 +7,6 @@ use inkwell::module::Module;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
-use inkwell::types::IntType;
 use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
@@ -25,7 +24,7 @@ struct CodeGen<'ctx> {
 type Registers<'a> = [IntValue<'a>; 32];
 
 type Build2<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
-type LoadValue<'ctx> = fn(&Builder<'ctx>, IntType<'ctx>, PointerValue<'ctx>) -> IntValue<'ctx>;
+type LoadValue<'ctx> = fn(&Builder<'ctx>, &'ctx Context, PointerValue<'ctx>) -> IntValue<'ctx>;
 type StoreValue<'ctx> = fn(&Builder<'ctx>, &Context, PointerValue<'ctx>, IntValue<'ctx>);
 
 impl<'ctx> CodeGen<'ctx> {
@@ -362,7 +361,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(then_block);
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
 
-        let load_value = load_branch(&self.builder, self.context.i16_type(), address);
+        let load_value = load_branch(&self.builder, self.context, address);
 
         self.builder.build_unconditional_branch(end_block);
 
@@ -440,9 +439,13 @@ impl<'ctx> CodeGen<'ctx> {
             load,
             memory_size,
             function,
-            |builder, i16_type, address| {
+            |builder, context, address| {
                 let load_value = builder.build_load(address, "lb");
-                builder.build_int_s_extend(load_value.into_int_value(), i16_type, "extended")
+                builder.build_int_s_extend(
+                    load_value.into_int_value(),
+                    context.i16_type(),
+                    "extended",
+                )
             },
         );
     }
@@ -461,9 +464,13 @@ impl<'ctx> CodeGen<'ctx> {
             load,
             memory_size,
             function,
-            |builder, i16_type, address| {
+            |builder, context, address| {
                 let load_value = builder.build_load(address, "lb");
-                builder.build_int_z_extend(load_value.into_int_value(), i16_type, "extended")
+                builder.build_int_z_extend(
+                    load_value.into_int_value(),
+                    context.i16_type(),
+                    "extended",
+                )
             },
         );
     }
