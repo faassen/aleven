@@ -26,7 +26,7 @@ type Registers<'a> = [IntValue<'a>; 32];
 
 type Build2<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
 type LoadValue<'ctx> = fn(&Builder<'ctx>, IntType<'ctx>, PointerValue<'ctx>) -> IntValue<'ctx>;
-type StoreValue<'ctx> = fn(&Builder<'ctx>, IntValue<'ctx>, IntType<'ctx>, PointerValue<'ctx>);
+type StoreValue<'ctx> = fn(&Builder<'ctx>, &Context, PointerValue<'ctx>, IntValue<'ctx>);
 
 impl<'ctx> CodeGen<'ctx> {
     fn compile_program(
@@ -416,9 +416,9 @@ impl<'ctx> CodeGen<'ctx> {
 
         store_branch(
             &self.builder,
-            registers[store.rs as usize],
-            self.context.i8_type(),
+            &self.context,
             address,
+            registers[store.rs as usize],
         );
 
         self.builder.build_unconditional_branch(end_block);
@@ -482,8 +482,8 @@ impl<'ctx> CodeGen<'ctx> {
             store,
             memory_size,
             function,
-            |builder, value, int_type, address| {
-                let truncated = builder.build_int_truncate(value, int_type, "truncated");
+            |builder, context, address, value| {
+                let truncated = builder.build_int_truncate(value, context.i8_type(), "truncated");
                 builder.build_store(address, truncated);
             },
         );
