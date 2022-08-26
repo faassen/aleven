@@ -52,11 +52,17 @@ impl<'ctx> CodeGen<'ctx> {
         let (blocks, targets) = self.get_blocks(function, instructions);
 
         let mut blocks_iter = blocks.iter();
-        let mut block = blocks_iter.next().unwrap().1;
-        self.builder.build_unconditional_branch(block);
-        self.builder.position_at_end(block);
+
+        // this is safe as there's always at least 1 block, even if there are no instruction
+        let mut next_instr_block = blocks_iter.next().unwrap().1;
+        self.builder.build_unconditional_branch(next_instr_block);
 
         for instruction in instructions {
+            let instr_block = next_instr_block;
+            self.builder.position_at_end(instr_block);
+            // there is safe as there's always more more block than instructions
+            next_instr_block = blocks_iter.next().unwrap().1;
+            let mut branched = false;
             match instruction {
                 Instruction::Addi(immediate) => self.compile_addi(&mut registers, immediate),
                 Instruction::Slti(immediate) => self.compile_slti(&mut registers, immediate),
@@ -93,20 +99,21 @@ impl<'ctx> CodeGen<'ctx> {
                     self.compile_sh(&registers, ptr, store, memory_size, function);
                 }
                 Instruction::Beq(branch) => {
-                    block = blocks_iter.next().unwrap().1;
-                    self.compile_beq(&registers, branch, block, &targets);
-                    self.builder.position_at_end(block);
+                    self.compile_beq(&registers, branch, next_instr_block, &targets);
+                    branched = true;
                 }
                 Instruction::Target(_target) => {
-                    block = blocks_iter.next().unwrap().1;
-                    self.builder.build_unconditional_branch(block);
-                    self.builder.position_at_end(block);
+                    // do nothing
                 }
             }
+            if !branched {
+                self.builder.build_unconditional_branch(next_instr_block);
+            }
         }
+        self.builder.position_at_end(next_instr_block);
         self.builder.build_return(None);
 
-        // self.module.print_to_stderr();
+        self.module.print_to_stderr();
         // save_asm(&self.module);
 
         unsafe { self.execution_engine.get_function("program").ok() }
@@ -119,34 +126,22 @@ impl<'ctx> CodeGen<'ctx> {
     ) -> (Vec<(usize, BasicBlock)>, FxHashMap<u8, BasicBlock>) {
         let mut blocks = Vec::new();
         let mut targets = FxHashMap::default();
-        let mut block_id: u16 = 0;
-        blocks.push((
-            0,
-            self.context
-                .append_basic_block(parent, &format!("block{}", block_id)),
-        ));
-        block_id += 1;
         for (index, instruction) in instructions.iter().enumerate() {
-            match instruction {
-                Instruction::Beq(_branch) => {
-                    blocks.push((
-                        index,
-                        self.context
-                            .append_basic_block(parent, &format!("block{}", block_id)),
-                    ));
-                    block_id += 1;
-                }
-                Instruction::Target(target) => {
-                    let block = self
-                        .context
-                        .append_basic_block(parent, &format!("block{}", block_id));
-                    blocks.push((index, block));
-                    targets.insert(target.identifier, block);
-                    block_id += 1;
-                }
-                _ => {}
+            let instr_block = self
+                .context
+                .append_basic_block(parent, &format!("instr-{}", index));
+
+            blocks.push((index, instr_block));
+
+            if let Instruction::Target(target) = instruction {
+                targets.insert(target.identifier, instr_block);
             }
         }
+        // add one more block for the end of the program
+        blocks.push((
+            instructions.len(),
+            self.context.append_basic_block(parent, "instr-end"),
+        ));
         (blocks, targets)
     }
 
@@ -159,7 +154,7 @@ impl<'ctx> CodeGen<'ctx> {
         let i16_type = self.context.i16_type();
         let value = i16_type.const_int(immediate.value as u64, false);
         let rs = registers[immediate.rs as usize];
-        let result = f(&self.builder, &self.context, rs, value);
+        let result = f(&self.builder, self.context, rs, value);
         registers[immediate.rd as usize] = result;
     }
 
@@ -2043,7 +2038,7 @@ mod tests {
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
-    fn test_beq(runner: Runner) {
+    fn test_beq_simple(runner: Runner) {
         let instructions = [
             Instruction::Lb(Load {
                 offset: 0,
