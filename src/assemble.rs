@@ -155,7 +155,7 @@ impl ValueDisassembler for Load {
     }
     fn disassemble(input: &[u8]) -> Load {
         Load {
-            offset: bytes_to_i16(&input[0..2]),
+            offset: bytes_to_u16(&input[0..2]),
             rs: clampreg(input[2]),
             rd: clampreg(input[3]),
         }
@@ -164,7 +164,7 @@ impl ValueDisassembler for Load {
 
 impl ValueAssembler for Load {
     fn assemble(&self, output: &mut Vec<u8>) {
-        output.extend(i16_to_bytes(self.offset));
+        output.extend(u16_to_bytes(self.offset));
         output.push(self.rs);
         output.push(self.rd);
     }
@@ -176,7 +176,7 @@ impl ValueDisassembler for Store {
     }
     fn disassemble(input: &[u8]) -> Self {
         Store {
-            offset: bytes_to_i16(&input[0..2]),
+            offset: bytes_to_u16(&input[0..2]),
             rs: clampreg(input[2]),
             rd: clampreg(input[3]),
         }
@@ -185,7 +185,7 @@ impl ValueDisassembler for Store {
 
 impl ValueAssembler for Store {
     fn assemble(&self, output: &mut Vec<u8>) {
-        output.extend(i16_to_bytes(self.offset));
+        output.extend(u16_to_bytes(self.offset));
         output.push(self.rs);
         output.push(self.rd);
     }
