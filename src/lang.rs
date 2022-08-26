@@ -161,7 +161,7 @@ impl Instruction {
             Instruction::Slli(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
-                let value = immediate.value;
+                let value = immediate.value as u16;
                 let result = if value < 16 {
                     processor.registers[rs as usize] << value
                 } else {
@@ -172,7 +172,7 @@ impl Instruction {
             Instruction::Srli(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
-                let value = immediate.value;
+                let value = immediate.value as u16;
                 let result = if value < 16 {
                     (processor.registers[rs as usize] as u16) >> value
                 } else {
@@ -183,7 +183,7 @@ impl Instruction {
             Instruction::Srai(immediate) => {
                 let rs = immediate.rs;
                 let rd = immediate.rd;
-                let value = immediate.value;
+                let value = immediate.value as u16;
                 let result = if value < 16 {
                     processor.registers[rs as usize] >> value
                 } else {
@@ -257,7 +257,7 @@ impl Instruction {
                 let rs1 = register.rs1;
                 let rs2 = register.rs2;
                 let rd = register.rd;
-                let result = if processor.registers[rs2 as usize] < 16 {
+                let result = if (processor.registers[rs2 as usize] as u16) < 16 {
                     processor.registers[rs1 as usize] << processor.registers[rs2 as usize]
                 } else {
                     processor.registers[rs1 as usize]
@@ -268,7 +268,7 @@ impl Instruction {
                 let rs1 = register.rs1;
                 let rs2 = register.rs2;
                 let rd = register.rd;
-                let result = if processor.registers[rs2 as usize] < 16 {
+                let result = if (processor.registers[rs2 as usize] as u16) < 16 {
                     (processor.registers[rs1 as usize] as u16) >> processor.registers[rs2 as usize]
                 } else {
                     processor.registers[rs1 as usize] as u16
@@ -279,7 +279,7 @@ impl Instruction {
                 let rs1 = register.rs1;
                 let rs2 = register.rs2;
                 let rd = register.rd;
-                let result = if processor.registers[rs2 as usize] < 16 {
+                let result = if (processor.registers[rs2 as usize] as u16) < 16 {
                     processor.registers[rs1 as usize] >> processor.registers[rs2 as usize]
                 } else {
                     processor.registers[rs1 as usize]

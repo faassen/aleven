@@ -2208,4 +2208,13 @@ mod tests {
         let mut memory = [0u8; 64];
         runner(&instructions, &mut memory);
     }
+
+    #[parameterized(runner={run_llvm, run_interpreter})]
+    fn test_bug4(runner: Runner) {
+        let assembler = Assembler::new();
+        let instructions = assembler.disassemble(&[7, 92, 209, 218, 176]);
+        println!("{:?}", instructions);
+        let mut memory = [0u8; 64];
+        runner(&instructions, &mut memory);
+    }
 }
