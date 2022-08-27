@@ -16,10 +16,10 @@ use std::error::Error;
 pub type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
 
 pub struct CodeGen<'ctx> {
-    pub context: &'ctx Context,
-    pub module: Module<'ctx>,
-    pub builder: Builder<'ctx>,
-    pub execution_engine: ExecutionEngine<'ctx>,
+    context: &'ctx Context,
+    module: Module<'ctx>,
+    builder: Builder<'ctx>,
+    execution_engine: ExecutionEngine<'ctx>,
 }
 
 type Registers<'a> = [PointerValue<'a>];
