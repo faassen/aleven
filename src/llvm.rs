@@ -24,7 +24,23 @@ pub struct CodeGen<'ctx> {
     execution_engine: ExecutionEngine<'ctx>,
 }
 
-type Registers<'a> = [PointerValue<'a>];
+struct Registers<'a>(Vec<PointerValue<'a>>);
+
+impl<'a> Registers<'a> {
+    fn new(context: &'a Context, builder: &Builder<'a>) -> Registers<'a> {
+        let mut registers = Vec::new();
+        for _i in 0..32 {
+            let alloc_a = builder.build_alloca(context.i16_type(), "memory");
+            builder.build_store(alloc_a, context.i16_type().const_int(0, false));
+            registers.push(alloc_a);
+        }
+        Registers(registers)
+    }
+
+    fn get(&self, index: u8) -> PointerValue<'a> {
+        self.0[index as usize]
+    }
+}
 
 type Build2<'ctx> =
     fn(&Builder<'ctx>, &'ctx Context, IntValue<'ctx>, IntValue<'ctx>) -> IntValue<'ctx>;
@@ -62,23 +78,17 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(basic_block);
         let ptr = function.get_nth_param(0)?.into_pointer_value();
 
-        let mut registers = Vec::new();
-        for _i in 0..32 {
-            let alloc_a = self.builder.build_alloca(i16_type, "memory");
-            self.builder
-                .build_store(alloc_a, i16_type.const_int(0, false));
-            registers.push(alloc_a);
-        }
-        let registers = registers.as_mut_slice();
-        self.compile_function(instructions, ptr, memory_size, registers, function)
+        let registers = Registers::new(self.context, &self.builder);
+
+        self.compile_function(instructions, ptr, memory_size, &registers, function)
     }
 
-    pub fn compile_function(
+    fn compile_function(
         &self,
         instructions: &[Instruction],
         memory_ptr: PointerValue<'ctx>,
         memory_size: u16,
-        registers: &mut [PointerValue<'ctx>],
+        registers: &Registers<'ctx>,
         function: FunctionValue,
     ) -> Option<JitFunction<ProgramFunc>> {
         let (blocks, targets) = self.get_blocks(function, instructions);
@@ -185,7 +195,7 @@ impl<'ctx> CodeGen<'ctx> {
     ) {
         let i16_type = self.context.i16_type();
         let value = i16_type.const_int(immediate.value as u64, false);
-        let rs = registers[immediate.rs as usize];
+        let rs = registers.get(immediate.rs);
         let rs_value = self.builder.build_load(rs, "rs_value");
         let result = f(
             &self.builder,
@@ -194,7 +204,7 @@ impl<'ctx> CodeGen<'ctx> {
             value,
         );
         self.builder
-            .build_store(registers[immediate.rd as usize], result);
+            .build_store(registers.get(immediate.rd), result);
     }
 
     fn compile_immediate_shift(
@@ -217,7 +227,7 @@ impl<'ctx> CodeGen<'ctx> {
                 "max shift",
             )
             .into_int_value();
-        let rs = registers[immediate.rs as usize];
+        let rs = registers.get(immediate.rs);
         let rs_value = self.builder.build_load(rs, "rs_value");
         let result = f(
             &self.builder,
@@ -226,7 +236,7 @@ impl<'ctx> CodeGen<'ctx> {
             mvalue,
         );
         self.builder
-            .build_store(registers[immediate.rd as usize], result);
+            .build_store(registers.get(immediate.rd), result);
     }
 
     fn compile_addi(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
@@ -286,9 +296,9 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn compile_register(&self, registers: &Registers<'ctx>, register: &Register, f: Build2<'ctx>) {
-        let rs1 = registers[register.rs1 as usize];
+        let rs1 = registers.get(register.rs1);
         let rs1_value = self.builder.build_load(rs1, "rs1_value");
-        let rs2 = registers[register.rs2 as usize];
+        let rs2 = registers.get(register.rs2);
         let rs2_value = self.builder.build_load(rs2, "rs2_value");
         let result = f(
             &self.builder,
@@ -296,8 +306,7 @@ impl<'ctx> CodeGen<'ctx> {
             rs1_value.into_int_value(),
             rs2_value.into_int_value(),
         );
-        self.builder
-            .build_store(registers[register.rd as usize], result);
+        self.builder.build_store(registers.get(register.rd), result);
     }
 
     fn compile_register_shift(
@@ -309,9 +318,9 @@ impl<'ctx> CodeGen<'ctx> {
         let i16_type = self.context.i16_type();
         let max = i16_type.const_int(16, false);
         let zero = i16_type.const_int(0, false);
-        let rs1 = registers[register.rs1 as usize];
+        let rs1 = registers.get(register.rs1);
         let rs1_value = self.builder.build_load(rs1, "rs1_value");
-        let rs2 = registers[register.rs2 as usize];
+        let rs2 = registers.get(register.rs2);
         let rs2_value = self.builder.build_load(rs2, "rs2_value");
         let mvalue = self
             .builder
@@ -333,8 +342,7 @@ impl<'ctx> CodeGen<'ctx> {
             rs1_value.into_int_value(),
             mvalue,
         );
-        self.builder
-            .build_store(registers[register.rd as usize], result);
+        self.builder.build_store(registers.get(register.rd), result);
     }
 
     fn compile_add(&self, registers: &Registers<'ctx>, register: &Register) {
@@ -404,7 +412,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(load_block);
 
         let offset = self.context.i16_type().const_int(load.offset as u64, false);
-        let rs = registers[load.rs as usize];
+        let rs = registers.get(load.rs);
         let rs_value = self.builder.build_load(rs, "rs_value");
         let index = self
             .builder
@@ -440,7 +448,7 @@ impl<'ctx> CodeGen<'ctx> {
         phi.add_incoming(&[(&load_value, then_block), (&else_value, else_block)]);
 
         self.builder.build_store(
-            registers[load.rd as usize],
+            registers.get(load.rd),
             phi.as_basic_value().into_int_value(),
         );
     }
@@ -462,7 +470,7 @@ impl<'ctx> CodeGen<'ctx> {
             .context
             .i16_type()
             .const_int(store.offset as u64, false);
-        let rd = registers[store.rd as usize];
+        let rd = registers.get(store.rd);
         let rd_value = self.builder.build_load(rd, "rs_value");
 
         let index = self
@@ -482,7 +490,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(then_block);
         let address = unsafe { self.builder.build_gep(ptr, &[index], "gep index") };
 
-        let rs = registers[store.rs as usize];
+        let rs = registers.get(store.rs);
         let rs_value = self.builder.build_load(rs, "rs_value");
         store_branch(
             &self.builder,
@@ -620,9 +628,9 @@ impl<'ctx> CodeGen<'ctx> {
         next_block: BasicBlock,
         targets: &FxHashMap<u8, BasicBlock>,
     ) {
-        let rs1 = registers[branch.rs1 as usize];
+        let rs1 = registers.get(branch.rs1);
         let rs1_value = self.builder.build_load(rs1, "rs1_value");
-        let rs2 = registers[branch.rs2 as usize];
+        let rs2 = registers.get(branch.rs2);
         let rs2_value = self.builder.build_load(rs2, "rs2_value");
 
         let cond = self.builder.build_int_compare(
