@@ -750,7 +750,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 mod tests {
     use crate::assemble::Assembler;
     use crate::lang::BranchTarget;
-    use crate::lang::{Processor, Program};
+    use crate::lang::Processor;
+    use crate::program::Program;
     use byteorder::{ByteOrder, LittleEndian};
     use parameterized::parameterized;
 
