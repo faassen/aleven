@@ -166,7 +166,7 @@ impl Instruction {
                 let result = if value < 16 {
                     processor.registers[rs as usize] << value
                 } else {
-                    0
+                    processor.registers[rs as usize]
                 };
                 processor.registers[rd as usize] = result;
             }
