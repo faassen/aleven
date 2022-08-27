@@ -2411,8 +2411,46 @@ mod tests {
             25, 0, 0, 0, 0, 24, 24, 24, 24, 24, 24, 24, 25, 126,
         ];
         let instructions = assembler.disassemble(&data);
-        println!("{:?}", instructions);
         let mut memory = data.to_vec();
         runner(&instructions, &mut memory);
+    }
+
+    #[test]
+    fn test_bug13() {
+        use Instruction::*;
+        let data = [
+            23, 81, 23, 255, 255, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 44, 23,
+            23, 23, 23, 255, 255, 37, 20, 1, 0, 23, 23, 23, 23, 23, 255, 255, 255, 255, 23, 23, 23,
+            23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 255, 255, 23, 23, 23, 0, 0, 23, 23,
+            23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 44, 23, 23, 23, 23,
+            255, 255, 161, 23, 23, 23, 23, 23, 255, 255, 0, 0, 0, 0, 0, 112, 0, 0, 255, 255, 37,
+            23, 23, 23, 23, 23, 23, 23, 23, 23, 20, 1, 0, 44, 23, 23, 23, 23, 255, 255, 23, 23, 23,
+            23,
+        ];
+
+        let instructions = [
+            Lb(Load {
+                offset: 1, // load 81 into register 23
+                rs: 23,
+                rd: 23,
+            }),
+            Sb(Store {
+                offset: 65535, // save register 23 to memory at offset 65535
+                rs: 23,
+                rd: 23,
+            }),
+        ];
+
+        // offset 81 + 65535 is beyond the bounds, so should have no effect
+        // for some reason position 80 is different, so it looks like there
+        // was a wraparound for the write in llvm but not in the interpreter
+        // In the end I fixed the interpreter to match llvm to fix this test
+        let mut memory0 = data.to_vec();
+        run_llvm(&instructions, &mut memory0);
+
+        let mut memory1 = data.to_vec();
+        run_interpreter(&instructions, &mut memory1);
+
+        assert_eq!(memory0, memory1);
     }
 }

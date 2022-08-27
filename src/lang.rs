@@ -74,6 +74,7 @@ pub enum Instruction {
     Target(BranchTarget),
 }
 
+#[derive(Debug)]
 pub struct Processor {
     registers: [i16; 32],
     pc: usize,
@@ -363,13 +364,13 @@ impl Instruction {
 }
 
 fn address_b(processor: &Processor, rs: u8, offset: u16) -> usize {
-    let start_address = processor.registers[rs as usize] as u16 as usize;
-    start_address.wrapping_add(offset as usize)
+    let start_address = processor.registers[rs as usize] as u16;
+    start_address.wrapping_add(offset) as usize
 }
 
 fn address_h(processor: &Processor, rs: u8, offset: u16) -> usize {
-    let start_address = processor.registers[rs as usize] as u16 as usize;
-    start_address.wrapping_add(offset as usize) * 2
+    let start_address = processor.registers[rs as usize] as u16;
+    start_address.wrapping_add(offset).wrapping_mul(2) as usize
 }
 
 impl Program {
