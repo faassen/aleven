@@ -292,8 +292,12 @@ impl Instruction {
                 let rs = load.rs;
                 let rd = load.rd;
                 let address = address_h(processor, rs, offset);
-                let result = if address < (memory.len() - 1) {
-                    LittleEndian::read_i16(&memory[address..])
+                let result = if let Some(address) = address {
+                    if address < (memory.len() - 1) {
+                        LittleEndian::read_i16(&memory[address..])
+                    } else {
+                        0
+                    }
                 } else {
                     0
                 };
@@ -328,11 +332,13 @@ impl Instruction {
                 let rs = store.rs;
                 let rd = store.rd;
                 let address = address_h(processor, rd, offset);
-                if address < (memory.len() - 1) {
-                    LittleEndian::write_i16(
-                        &mut memory[address..],
-                        processor.registers[rs as usize],
-                    );
+                if let Some(address) = address {
+                    if address < (memory.len() - 1) {
+                        LittleEndian::write_i16(
+                            &mut memory[address..],
+                            processor.registers[rs as usize],
+                        );
+                    }
                 }
             }
             Instruction::Sb(store) => {
@@ -368,9 +374,12 @@ fn address_b(processor: &Processor, rs: u8, offset: u16) -> usize {
     start_address.wrapping_add(offset) as usize
 }
 
-fn address_h(processor: &Processor, rs: u8, offset: u16) -> usize {
+fn address_h(processor: &Processor, rs: u8, offset: u16) -> Option<usize> {
     let start_address = processor.registers[rs as usize] as u16;
-    start_address.wrapping_add(offset).wrapping_mul(2) as usize
+    start_address
+        .wrapping_add(offset)
+        .checked_mul(2)
+        .map(|address| address as usize)
 }
 
 impl Program {

@@ -2504,4 +2504,37 @@ mod tests {
         run_interpreter(&instructions, &mut memory1);
         assert_eq!(memory0, memory1);
     }
+
+    #[test]
+    fn test_bug15() {
+        use Instruction::*;
+        let data = [
+            1, 0, 0, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+            22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+            22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+            22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+            22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 128, 128,
+            128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+            128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+            128, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+            22, 22, 22, 22, 22, 22, 22, 22, 22, 255, 255, 255, 255, 22, 22, 22, 22, 22, 22, 22, 22,
+            22, 22, 49, 54, 98, 105, 116, 45, 109, 111, 100, 101, 22, 22, 22, 22, 22, 22, 22, 22,
+            22, 22, 22, 22, 22, 22, 22, 0, 25, 227, 254, 23, 0,
+        ];
+        // the interpreter wrote data here, while the compiler did not
+        // position 44 is written to with 0 by the interpreter
+        // fixed the interpreter so that overflows don't cause a write
+        let instructions = [Sh(Store {
+            offset: 32790,
+            rs: 0,
+            rd: 0,
+        })];
+        let mut memory0 = data.to_vec();
+        run_llvm(&instructions, &mut memory0);
+
+        let mut memory1 = data.to_vec();
+        run_interpreter(&instructions, &mut memory1);
+        assert_eq!(memory0, data);
+        assert_eq!(memory0, memory1);
+    }
 }
