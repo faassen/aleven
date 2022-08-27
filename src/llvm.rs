@@ -179,7 +179,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_immediate(
         &self,
-        registers: &mut Registers<'ctx>,
+        registers: &Registers<'ctx>,
         immediate: &Immediate,
         f: Build2<'ctx>,
     ) {
@@ -199,7 +199,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_immediate_shift(
         &self,
-        registers: &mut Registers<'ctx>,
+        registers: &Registers<'ctx>,
         immediate: &Immediate,
         f: Build2<'ctx>,
     ) {
@@ -229,68 +229,63 @@ impl<'ctx> CodeGen<'ctx> {
             .build_store(registers[immediate.rd as usize], result);
     }
 
-    fn compile_addi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_addi(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_int_add(a, b, "addi")
         });
     }
 
-    fn compile_slti(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_slti(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate(registers, immediate, |builder, context, a, b| {
             let cmp = builder.build_int_compare(IntPredicate::SLT, a, b, "slti");
             builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
 
-    fn compile_sltiu(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_sltiu(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate(registers, immediate, |builder, context, a, b| {
             let cmp = builder.build_int_compare(IntPredicate::ULT, a, b, "sltiu");
             builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
 
-    fn compile_andi(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_andi(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_and(a, b, "andi")
         });
     }
 
-    fn compile_ori(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_ori(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_or(a, b, "ori")
         });
     }
 
-    fn compile_xori(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_xori(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate(registers, immediate, |builder, _context, a, b| {
             builder.build_xor(a, b, "xori")
         });
     }
 
-    fn compile_slli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_slli(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate_shift(registers, immediate, |builder, _context, a, b| {
             builder.build_left_shift(a, b, "slli")
         });
     }
 
-    fn compile_srli(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_srli(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate_shift(registers, immediate, |builder, _context, a, b| {
             builder.build_right_shift(a, b, false, "srli")
         });
     }
 
-    fn compile_srai(&self, registers: &mut Registers<'ctx>, immediate: &Immediate) {
+    fn compile_srai(&self, registers: &Registers<'ctx>, immediate: &Immediate) {
         self.compile_immediate_shift(registers, immediate, |builder, _context, a, b| {
             builder.build_right_shift(a, b, true, "srai")
         });
     }
 
-    fn compile_register(
-        &self,
-        registers: &mut Registers<'ctx>,
-        register: &Register,
-        f: Build2<'ctx>,
-    ) {
+    fn compile_register(&self, registers: &Registers<'ctx>, register: &Register, f: Build2<'ctx>) {
         let rs1 = registers[register.rs1 as usize];
         let rs1_value = self.builder.build_load(rs1, "rs1_value");
         let rs2 = registers[register.rs2 as usize];
@@ -307,7 +302,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_register_shift(
         &self,
-        registers: &mut Registers<'ctx>,
+        registers: &Registers<'ctx>,
         register: &Register,
         f: Build2<'ctx>,
     ) {
@@ -342,54 +337,54 @@ impl<'ctx> CodeGen<'ctx> {
             .build_store(registers[register.rd as usize], result);
     }
 
-    fn compile_add(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_add(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_int_add(a, b, "add")
         });
     }
-    fn compile_sub(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_sub(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_int_sub(a, b, "sub")
         });
     }
-    fn compile_slt(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_slt(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register(registers, register, |builder, context, a, b| {
             let cmp = builder.build_int_compare(IntPredicate::SLT, a, b, "slt");
             builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
-    fn compile_sltu(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_sltu(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register(registers, register, |builder, context, a, b| {
             let cmp = builder.build_int_compare(IntPredicate::ULT, a, b, "sltu");
             builder.build_int_z_extend(cmp, context.i16_type(), "sltz")
         });
     }
-    fn compile_and(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_and(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_and(a, b, "and")
         });
     }
-    fn compile_or(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_or(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_or(a, b, "and")
         });
     }
-    fn compile_xor(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_xor(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register(registers, register, |builder, _context, a, b| {
             builder.build_xor(a, b, "and")
         });
     }
-    fn compile_sll(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_sll(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register_shift(registers, register, |builder, _context, a, b| {
             builder.build_left_shift(a, b, "and")
         });
     }
-    fn compile_srl(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_srl(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register_shift(registers, register, |builder, _context, a, b| {
             builder.build_right_shift(a, b, false, "and")
         });
     }
-    fn compile_sra(&self, registers: &mut Registers<'ctx>, register: &Register) {
+    fn compile_sra(&self, registers: &Registers<'ctx>, register: &Register) {
         self.compile_register_shift(registers, register, |builder, _context, a, b| {
             builder.build_right_shift(a, b, true, "and")
         });
@@ -397,7 +392,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_load_in_bounds(
         &self,
-        registers: &mut Registers<'ctx>,
+        registers: &Registers<'ctx>,
         ptr: PointerValue<'ctx>,
         load: &Load,
         memory_size: u16,
@@ -503,7 +498,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_lb(
         &self,
-        registers: &mut Registers<'ctx>,
+        registers: &Registers<'ctx>,
         ptr: PointerValue<'ctx>,
         load: &Load,
         memory_size: u16,
@@ -528,7 +523,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_lbu(
         &self,
-        registers: &mut Registers<'ctx>,
+        registers: &Registers<'ctx>,
         ptr: PointerValue<'ctx>,
         load: &Load,
         memory_size: u16,
@@ -574,7 +569,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_lh(
         &self,
-        registers: &mut Registers<'ctx>,
+        registers: &Registers<'ctx>,
         ptr: PointerValue<'ctx>,
         load: &Load,
         memory_size: u16,
