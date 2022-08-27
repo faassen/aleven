@@ -17,7 +17,7 @@ pub type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
 
 pub struct CodeGen<'ctx> {
     context: &'ctx Context,
-    module: Module<'ctx>,
+    pub module: Module<'ctx>,
     builder: Builder<'ctx>,
     execution_engine: ExecutionEngine<'ctx>,
 }
