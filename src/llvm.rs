@@ -70,7 +70,17 @@ impl<'ctx> CodeGen<'ctx> {
             registers.push(alloc_a);
         }
         let registers = registers.as_mut_slice();
+        self.compile_function(instructions, ptr, memory_size, registers, function)
+    }
 
+    pub fn compile_function(
+        &self,
+        instructions: &[Instruction],
+        memory_ptr: PointerValue<'ctx>,
+        memory_size: u16,
+        registers: &mut [PointerValue<'ctx>],
+        function: FunctionValue,
+    ) -> Option<JitFunction<ProgramFunc>> {
         let (blocks, targets) = self.get_blocks(function, instructions);
 
         let mut blocks_iter = blocks.iter();
@@ -106,19 +116,19 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::Srl(register) => self.compile_srl(registers, register),
                 Instruction::Sra(register) => self.compile_sra(registers, register),
                 Instruction::Lb(load) => {
-                    self.compile_lb(registers, ptr, load, memory_size, function);
+                    self.compile_lb(registers, memory_ptr, load, memory_size, function);
                 }
                 Instruction::Lbu(load) => {
-                    self.compile_lbu(registers, ptr, load, memory_size, function);
+                    self.compile_lbu(registers, memory_ptr, load, memory_size, function);
                 }
                 Instruction::Sb(store) => {
-                    self.compile_sb(registers, ptr, store, memory_size, function);
+                    self.compile_sb(registers, memory_ptr, store, memory_size, function);
                 }
                 Instruction::Lh(load) => {
-                    self.compile_lh(registers, ptr, load, memory_size, function);
+                    self.compile_lh(registers, memory_ptr, load, memory_size, function);
                 }
                 Instruction::Sh(store) => {
-                    self.compile_sh(registers, ptr, store, memory_size, function);
+                    self.compile_sh(registers, memory_ptr, store, memory_size, function);
                 }
                 Instruction::Beq(branch) => {
                     self.compile_beq(registers, branch, next_instr_block, &targets);
