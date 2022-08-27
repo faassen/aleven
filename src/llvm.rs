@@ -773,15 +773,15 @@ mod tests {
     }
 
     fn run_llvm(instructions: &[Instruction], memory: &mut [u8]) {
-        let instructions = Program::cleanup(instructions);
+        let program = Program::new(instructions);
         let context = Context::create();
         let codegen = create_codegen(&context);
-        let program = codegen
-            .compile_program(&instructions, memory.len() as u16)
+        let llvm_program = codegen
+            .compile_program(program.get_instructions(), memory.len() as u16)
             .expect("Unable to JIT compile `program`");
         codegen.module.verify().unwrap();
         unsafe {
-            program.call(memory.as_mut_ptr());
+            llvm_program.call(memory.as_mut_ptr());
         }
     }
 

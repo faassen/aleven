@@ -18,7 +18,11 @@ impl Program {
         processor.execute(&self.instructions, memory, &targets);
     }
 
-    pub fn cleanup(instructions: &[Instruction]) -> Vec<Instruction> {
+    pub fn get_instructions(&self) -> &[Instruction] {
+        &self.instructions
+    }
+
+    fn cleanup(instructions: &[Instruction]) -> Vec<Instruction> {
         // clean up program by removing branching instructions that don't have
         // targets or point to a target that's earlier
         let targets = Program::targets(instructions);
