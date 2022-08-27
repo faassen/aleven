@@ -2,7 +2,6 @@ use crate::lang::Instruction;
 use crate::lang::Processor;
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
-use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use rustc_hash::FxHashMap;
 
