@@ -1,5 +1,9 @@
 use crate::lang::Instruction;
 use crate::lang::Processor;
+use crate::llvm::CodeGen;
+use crate::llvm::ProgramFunc;
+use inkwell::context::Context;
+use inkwell::execution_engine::JitFunction;
 use rustc_hash::FxHashMap;
 
 pub struct Program {
@@ -16,6 +20,17 @@ impl Program {
     pub fn interpret(&self, processor: &mut Processor, memory: &mut [u8]) {
         let targets = Program::targets(&self.instructions);
         processor.execute(&self.instructions, memory, &targets);
+    }
+
+    pub fn compile<'ctx>(
+        &self,
+        codegen: &'ctx CodeGen,
+        memory_len: u16,
+    ) -> JitFunction<'ctx, ProgramFunc> {
+        let llvm_program = codegen
+            .compile_program(&self.instructions, memory_len)
+            .expect("Unable to JIT compile `program`");
+        llvm_program
     }
 
     pub fn get_instructions(&self) -> &[Instruction] {

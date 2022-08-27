@@ -13,7 +13,7 @@ use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
 use std::error::Error;
 
-type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
+pub type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
 
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
@@ -776,9 +776,7 @@ mod tests {
         let program = Program::new(instructions);
         let context = Context::create();
         let codegen = create_codegen(&context);
-        let llvm_program = codegen
-            .compile_program(program.get_instructions(), memory.len() as u16)
-            .expect("Unable to JIT compile `program`");
+        let llvm_program = program.compile(&codegen, memory.len() as u16);
         codegen.module.verify().unwrap();
         unsafe {
             llvm_program.call(memory.as_mut_ptr());
