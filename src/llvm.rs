@@ -1,4 +1,5 @@
 use crate::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
+use crate::program::Program;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -670,40 +671,10 @@ fn save_asm(module: &Module) {
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let context = Context::create();
-    let module = context.create_module("program");
-    let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None)?;
-    let codegen = CodeGen {
-        context: &context,
-        module,
-        builder: context.create_builder(),
-        execution_engine,
-    };
+    let codegen = CodeGen::new(&context);
 
     let mut memory = [0u8; 64];
     memory[0] = 11;
-
-    // let instructions = [
-    //     Instruction::Lb(Load {
-    //         rs: 1,
-    //         rd: 2,
-    //         offset: 0,
-    //     }),
-    //     Instruction::Addi(Immediate {
-    //         value: 44,
-    //         rs: 1,
-    //         rd: 3,
-    //     }),
-    //     Instruction::Add(Register {
-    //         rs1: 2,
-    //         rs2: 3,
-    //         rd: 4,
-    //     }),
-    //     Instruction::Sb(Store {
-    //         offset: 10,
-    //         rs: 4,
-    //         rd: 5, // defaults to 0
-    //     }),
-    // ];
 
     use Instruction::*;
     let instructions = [
@@ -730,29 +701,14 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             rd: 24,
         }),
     ];
-    // let instructions = [
-    //     Instruction::Addi(Immediate {
-    //         value: 33,
-    //         rs: 0,
-    //         rd: 1,
-    //     }),
-    //     Instruction::Sb(Store {
-    //         offset: 10,
-    //         rs: 1,
-    //         rd: 2, // defaults to 0
-    //     }),
-    // ];
+    let program = Program::new(&instructions);
 
     println!("Compiling program");
-    let program = codegen
-        .compile_program(&instructions, 64)
-        .ok_or("Unable to JIT compile `program`")?;
-
+    let func = program.compile(&codegen, memory.len() as u16);
     save_asm(&codegen.module);
+
     println!("Running program");
-    unsafe {
-        program.call(memory.as_mut_ptr());
-    }
+    Program::run(func, &mut memory);
     println!("Memory");
     println!("{:?}", memory);
 
