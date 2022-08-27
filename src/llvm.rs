@@ -2484,14 +2484,13 @@ mod tests {
                 rs: 22,
                 rd: 22,
             }),
-            // now we do r16 - r22, which should be 0
+            // now we do r16 - r22, which should be -5632
             Sub(Register {
                 rs1: 16,
                 rs2: 22,
                 rd: 22,
             }),
-            // and now we write to 0 + 5632, but that's out of bounds,
-            // so should have no effect
+            // and now we write to -5632 + 5654
             Sh(Store {
                 offset: 5654,
                 rs: 22,
