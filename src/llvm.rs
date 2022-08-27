@@ -30,6 +30,19 @@ type LoadValue<'ctx> = fn(&Builder<'ctx>, &'ctx Context, PointerValue<'ctx>) -> 
 type StoreValue<'ctx> = fn(&Builder<'ctx>, &Context, PointerValue<'ctx>, IntValue<'ctx>);
 
 impl<'ctx> CodeGen<'ctx> {
+    pub fn new(context: &'ctx Context) -> CodeGen<'ctx> {
+        let module = context.create_module("program");
+        let execution_engine = module
+            .create_jit_execution_engine(OptimizationLevel::Default)
+            .expect("Execution engine couldn't be built");
+        CodeGen {
+            context,
+            module,
+            builder: context.create_builder(),
+            execution_engine,
+        }
+    }
+
     pub fn compile_program(
         &self,
         instructions: &[Instruction],
@@ -759,28 +772,13 @@ mod tests {
 
     use super::*;
 
-    fn create_codegen(context: &Context) -> CodeGen<'_> {
-        let module = context.create_module("program");
-        let execution_engine = module
-            .create_jit_execution_engine(OptimizationLevel::None)
-            .expect("Execution engine couldn't be built");
-        CodeGen {
-            context,
-            module,
-            builder: context.create_builder(),
-            execution_engine,
-        }
-    }
-
     fn run_llvm(instructions: &[Instruction], memory: &mut [u8]) {
         let program = Program::new(instructions);
         let context = Context::create();
-        let codegen = create_codegen(&context);
-        let llvm_program = program.compile(&codegen, memory.len() as u16);
+        let codegen = CodeGen::new(&context);
+        let func = program.compile(&codegen, memory.len() as u16);
         codegen.module.verify().unwrap();
-        unsafe {
-            llvm_program.call(memory.as_mut_ptr());
-        }
+        Program::run(func, memory);
     }
 
     fn run_interpreter(instructions: &[Instruction], memory: &mut [u8]) {
