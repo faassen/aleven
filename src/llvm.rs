@@ -787,7 +787,7 @@ mod tests {
 
     fn run_interpreter(instructions: &[Instruction], memory: &mut [u8]) {
         let mut processor = Processor::new();
-        Program::new(instructions).execute(&mut processor, memory);
+        Program::new(instructions).interpret(&mut processor, memory);
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]

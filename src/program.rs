@@ -13,7 +13,7 @@ impl Program {
         }
     }
 
-    pub fn execute(&self, processor: &mut Processor, memory: &mut [u8]) {
+    pub fn interpret(&self, processor: &mut Processor, memory: &mut [u8]) {
         let targets = Program::targets(&self.instructions);
         processor.execute(&self.instructions, memory, &targets);
     }
