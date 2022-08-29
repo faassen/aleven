@@ -1,8 +1,8 @@
 #![no_main]
 extern crate aleven;
-use aleven::assemble::Assembler;
-use aleven::llvm::CodeGen;
-use aleven::program::Program;
+use aleven::Assembler;
+use aleven::CodeGen;
+use aleven::Program;
 use inkwell::context::Context;
 use inkwell::OptimizationLevel;
 use libfuzzer_sys::fuzz_target;

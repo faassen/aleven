@@ -1,7 +1,7 @@
-use aleven::assemble::Assembler;
-use aleven::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
-use aleven::llvm::CodeGen;
-use aleven::program::Program;
+use aleven::Assembler;
+use aleven::CodeGen;
+use aleven::Program;
+use aleven::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
 use byteorder::{ByteOrder, LittleEndian};
 use inkwell::context::Context;
 use parameterized::parameterized;

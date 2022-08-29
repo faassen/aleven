@@ -1,7 +1,7 @@
 #![no_main]
 extern crate aleven;
-use aleven::assemble::Assembler;
-use aleven::program::Program;
+use aleven::Assembler;
+use aleven::Program;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
