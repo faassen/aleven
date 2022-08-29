@@ -4,50 +4,50 @@ use parameterized::parameterized;
 
 mod run;
 
-use run::{run_interpreter, run_llvm, Runner};
+use run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug1(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug1(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(&[10, 0, 43, 45]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug2(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug2(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(&[11, 42, 222, 10]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug3(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug3(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(&[]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug4(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug4(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(&[7, 92, 209, 218, 176]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug5(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug5(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(&[254, 22, 68, 156, 25, 49]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug6(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug6(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions =
         assembler.disassemble(&[5, 0, 0, 0, 0, 0, 0, 91, 27, 0, 0, 0, 96, 0, 1, 213, 21]);
@@ -55,8 +55,8 @@ fn test_bug6(runner: Runner) {
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug7(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug7(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(&[
         5, 234, 234, 234, 234, 234, 234, 234, 234, 29, 21, 234, 234, 234, 234, 32, 10, 32, 6, 10,
@@ -65,8 +65,8 @@ fn test_bug7(runner: Runner) {
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug8(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug8(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let instructions = assembler.disassemble(&[
         0, 0, 234, 249, 185, 255, 230, 5, 191, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
@@ -76,8 +76,8 @@ fn test_bug8(runner: Runner) {
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug9(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug9(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let data = [
         20, 77, 22, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 0, 146,
@@ -89,8 +89,8 @@ fn test_bug9(runner: Runner) {
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug10(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug10(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let data = [25, 24, 24, 24, 24, 24];
     let instructions = assembler.disassemble(&data);
@@ -98,8 +98,8 @@ fn test_bug10(runner: Runner) {
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug11(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug11(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let data = [
         19, 25, 176, 25, 255, 25, 255, 255, 255, 255, 25, 25, 255, 12, 255, 25, 255, 12, 25, 255,
@@ -110,8 +110,8 @@ fn test_bug11(runner: Runner) {
     runner(&instructions, &mut memory);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_bug12(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bug12(runner: RunnerFunc) {
     let assembler = Assembler::new();
     let data = [
         25, 176, 19, 24, 34, 24, 24, 24, 255, 255, 255, 255, 24, 24, 24, 24, 24, 24, 24, 24, 24,
@@ -155,10 +155,10 @@ fn test_bug13() {
     // was a wraparound for the write in llvm but not in the interpreter
     // In the end I fixed the interpreter to match llvm to fix this test
     let mut memory0 = data.to_vec();
-    run_llvm(&instructions, &mut memory0);
+    run_llvm_func(&instructions, &mut memory0);
 
     let mut memory1 = data.to_vec();
-    run_interpreter(&instructions, &mut memory1);
+    run_interpreter_func(&instructions, &mut memory1);
 
     assert_eq!(memory0, memory1);
 }
@@ -207,10 +207,10 @@ fn test_bug14() {
         }),
     ];
     let mut memory0 = data.to_vec();
-    run_llvm(&instructions, &mut memory0);
+    run_llvm_func(&instructions, &mut memory0);
 
     let mut memory1 = data.to_vec();
-    run_interpreter(&instructions, &mut memory1);
+    run_interpreter_func(&instructions, &mut memory1);
     assert_eq!(memory0, memory1);
 }
 
@@ -239,10 +239,10 @@ fn test_bug15() {
         rd: 0,
     })];
     let mut memory0 = data.to_vec();
-    run_llvm(&instructions, &mut memory0);
+    run_llvm_func(&instructions, &mut memory0);
 
     let mut memory1 = data.to_vec();
-    run_interpreter(&instructions, &mut memory1);
+    run_interpreter_func(&instructions, &mut memory1);
     assert_eq!(memory0, data);
     assert_eq!(memory0, memory1);
 }

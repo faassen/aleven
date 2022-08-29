@@ -4,10 +4,10 @@ use parameterized::parameterized;
 
 mod run;
 
-use run::{run_interpreter, run_llvm, Runner};
+use run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lb_in_bounds(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lb_in_bounds(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -26,8 +26,8 @@ fn test_lb_in_bounds(runner: Runner) {
     assert_eq!(memory[10], 11);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lb_out_of_bounds_means_zero(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lb_out_of_bounds_means_zero(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 65,
@@ -46,8 +46,8 @@ fn test_lb_out_of_bounds_means_zero(runner: Runner) {
     assert_eq!(memory[10], 0);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lbu_out_of_bounds_means_nop(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lbu_out_of_bounds_means_nop(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lbu(Load {
             offset: 65,
@@ -65,8 +65,8 @@ fn test_lbu_out_of_bounds_means_nop(runner: Runner) {
     assert_eq!(memory[10], 0);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lh_sh(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lh_sh(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lh(Load {
             offset: 0,
@@ -88,8 +88,8 @@ fn test_lh_sh(runner: Runner) {
     assert_eq!(memory[21], 1);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lh_aligns(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lh_aligns(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lh(Load {
             offset: 1, // aligned back to 0
@@ -110,8 +110,8 @@ fn test_lh_aligns(runner: Runner) {
     assert_eq!(memory[21], 1);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lh_out_of_bounds(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lh_out_of_bounds(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lh(Load {
             offset: 65, // out of bounds
@@ -129,8 +129,8 @@ fn test_lh_out_of_bounds(runner: Runner) {
     assert_eq!(memory, [0u8; 64]);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lb_sign_extends(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lb_sign_extends(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -150,8 +150,8 @@ fn test_lb_sign_extends(runner: Runner) {
     assert_eq!(value, -4);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lbu_zero_extends(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lbu_zero_extends(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lbu(Load {
             offset: 0,
@@ -171,8 +171,8 @@ fn test_lbu_zero_extends(runner: Runner) {
     assert_eq!(value, 252);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lb_sign_extends_with_sra(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lb_sign_extends_with_sra(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -198,8 +198,8 @@ fn test_lb_sign_extends_with_sra(runner: Runner) {
     assert_eq!(value, 0xFFFFu16 as i16);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_lbu_zero_extends_sra(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_lbu_zero_extends_sra(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lbu(Load {
             offset: 0,

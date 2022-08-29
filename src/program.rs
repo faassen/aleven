@@ -6,12 +6,17 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn new(functions: Vec<Function>) -> Program {
-        Program { functions }
+    pub fn new(functions: &[&[Instruction]]) -> Program {
+        Program {
+            functions: functions
+                .iter()
+                .map(|instructions| Function::new(instructions))
+                .collect(),
+        }
     }
 
     pub fn from_instructions(instructions: &[Instruction]) -> Program {
-        Program::new(vec![Function::new(instructions)])
+        Program::new(&[instructions])
     }
 
     pub fn interpret(&self, memory: &mut [u8]) {

@@ -3,10 +3,10 @@ use parameterized::parameterized;
 
 mod run;
 
-use run::{run_interpreter, run_llvm, Runner};
+use run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_beq_simple(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_beq_simple(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -55,8 +55,8 @@ fn test_beq_simple(runner: Runner) {
     assert_eq!(memory[10], 30);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_beq_nonexistent_target_means_nop(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_beq_nonexistent_target_means_nop(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -104,8 +104,8 @@ fn test_beq_nonexistent_target_means_nop(runner: Runner) {
     assert_eq!(memory[10], 30);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_beq_earlier_target_means_nop(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_beq_earlier_target_means_nop(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -153,8 +153,8 @@ fn test_beq_earlier_target_means_nop(runner: Runner) {
     assert_eq!(memory[10], 30);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_addi_after_beq(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_addi_after_beq(runner: RunnerFunc) {
     use Instruction::*;
     let instructions = [
         Target(BranchTarget { identifier: 176 }),

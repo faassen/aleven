@@ -4,10 +4,10 @@ use parameterized::parameterized;
 
 mod run;
 
-use run::{run_interpreter, run_llvm, Runner};
+use run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_addi_basic(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_addi_basic(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 33,
@@ -26,8 +26,8 @@ fn test_addi_basic(runner: Runner) {
     assert_eq!(memory[10], 33);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_addi_register_has_value(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_addi_register_has_value(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 10,
@@ -51,8 +51,8 @@ fn test_addi_register_has_value(runner: Runner) {
     assert_eq!(memory[10], 43);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_addi_register_rs_is_rd(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_addi_register_rs_is_rd(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 10,
@@ -76,8 +76,8 @@ fn test_addi_register_rs_is_rd(runner: Runner) {
     assert_eq!(memory[10], 43);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_addi_register_dec(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_addi_register_dec(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 10,
@@ -101,8 +101,8 @@ fn test_addi_register_dec(runner: Runner) {
     assert_eq!(memory[10], 9);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slti_less(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_slti_less(runner: RunnerFunc) {
     let instructions = [
         Instruction::Slti(Immediate {
             value: 5,
@@ -120,8 +120,8 @@ fn test_slti_less(runner: Runner) {
     assert_eq!(memory[10], 1);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slti_less_negative(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_slti_less_negative(runner: RunnerFunc) {
     let instructions = [
         Instruction::Slti(Immediate {
             value: -4,
@@ -139,8 +139,8 @@ fn test_slti_less_negative(runner: Runner) {
     assert_eq!(memory[10], 0);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_sltiu_less(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_sltiu_less(runner: RunnerFunc) {
     let instructions = [
         Instruction::Sltiu(Immediate {
             value: -4, // treated as large number instead
@@ -158,8 +158,8 @@ fn test_sltiu_less(runner: Runner) {
     assert_eq!(memory[10], 1);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slti_equal(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_slti_equal(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 5,
@@ -182,8 +182,8 @@ fn test_slti_equal(runner: Runner) {
     assert_eq!(memory[10], 0);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slti_greater(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_slti_greater(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 6,
@@ -206,8 +206,8 @@ fn test_slti_greater(runner: Runner) {
     assert_eq!(memory[10], 0);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_andi(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_andi(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 0b1010101,
@@ -230,8 +230,8 @@ fn test_andi(runner: Runner) {
     assert_eq!(memory[10], 0b1010100);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_ori(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_ori(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 0b1010100,
@@ -254,8 +254,8 @@ fn test_ori(runner: Runner) {
     assert_eq!(memory[10], 0b1111110);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_xori(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_xori(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 0b1010100,
@@ -278,8 +278,8 @@ fn test_xori(runner: Runner) {
     assert_eq!(memory[10], 0b0101110);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slli(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_slli(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 5,
@@ -302,8 +302,8 @@ fn test_slli(runner: Runner) {
     assert_eq!(memory[10], 20);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_srai(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_srai(runner: RunnerFunc) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 20,
@@ -326,8 +326,8 @@ fn test_srai(runner: Runner) {
     assert_eq!(memory[10], 5);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_srli_zero_extends_srli(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_srli_zero_extends_srli(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,

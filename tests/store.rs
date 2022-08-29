@@ -4,10 +4,10 @@ use parameterized::parameterized;
 
 mod run;
 
-use run::{run_interpreter, run_llvm, Runner};
+use run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_sb_out_of_bounds(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_sb_out_of_bounds(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -27,8 +27,8 @@ fn test_sb_out_of_bounds(runner: Runner) {
     assert_eq!(memory, expected);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_sh_aligns(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_sh_aligns(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lh(Load {
             offset: 0,
@@ -50,8 +50,8 @@ fn test_sh_aligns(runner: Runner) {
     assert_eq!(memory[23], 1);
 }
 
-#[parameterized(runner={run_llvm, run_interpreter})]
-fn test_sh_out_of_bounds(runner: Runner) {
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_sh_out_of_bounds(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lh(Load {
             offset: 0,

@@ -86,6 +86,7 @@ pub struct Processor {
     registers: [i16; 32],
     pc: usize,
     jumped: bool,
+    call_stack: Vec<usize>,
 }
 
 impl Processor {
@@ -94,6 +95,7 @@ impl Processor {
             registers: [0; 32],
             pc: 0,
             jumped: false,
+            call_stack: Vec::new(),
         }
     }
 
@@ -106,7 +108,7 @@ impl Processor {
     ) {
         while self.pc < instructions.len() {
             let instruction = &instructions[self.pc];
-            instruction.execute(self, memory, targets);
+            instruction.execute(self, memory, targets, functions);
             if self.jumped {
                 self.jumped = false;
             } else {
@@ -128,6 +130,7 @@ impl Instruction {
         processor: &mut Processor,
         memory: &mut [u8],
         targets: &FxHashMap<u8, usize>,
+        functions: &[Function],
     ) {
         match self {
             Instruction::Addi(immediate) => {
@@ -386,7 +389,14 @@ impl Instruction {
             Instruction::Target(_target) => {
                 // this is a no-op, as targets are only used for branches
             }
-            Instruction::Call(call) => {}
+            Instruction::Call(call) => {
+                let identifier = call.identifier as usize;
+                let function = &functions[identifier];
+                processor.call_stack.push(processor.pc);
+                processor.pc = 0;
+                function.interpret(memory, processor, functions);
+                processor.pc = processor.call_stack.pop().unwrap();
+            }
         }
     }
 }
