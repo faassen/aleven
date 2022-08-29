@@ -79,11 +79,10 @@ impl<'ctx> CodeGen<'ctx> {
             .add_function(format!("func-{}", id).as_str(), fn_type, None);
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
-        let ptr = function.get_nth_param(0)?.into_pointer_value();
 
         let registers = Registers::new(self.context, &self.builder);
 
-        self.compile_function(instructions, ptr, memory_size, &registers, function);
+        self.compile_function(instructions, memory_size, &registers, function);
 
         unsafe { self.execution_engine.get_function("func-0").ok() }
     }
@@ -91,11 +90,12 @@ impl<'ctx> CodeGen<'ctx> {
     fn compile_function(
         &self,
         instructions: &[Instruction],
-        memory_ptr: PointerValue<'ctx>,
         memory_size: u16,
         registers: &Registers<'ctx>,
-        function: FunctionValue,
+        function: FunctionValue<'ctx>,
     ) {
+        let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
+
         let (blocks, targets) = self.get_blocks(function, instructions);
 
         let mut blocks_iter = blocks.iter();
