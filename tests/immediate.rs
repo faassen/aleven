@@ -1,4 +1,5 @@
-use aleven::{Immediate, Instruction, Store};
+use aleven::{Immediate, Instruction, Load, Store};
+use byteorder::{ByteOrder, LittleEndian};
 use parameterized::parameterized;
 
 mod run;
@@ -323,4 +324,31 @@ fn test_srai(runner: Runner) {
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
     assert_eq!(memory[10], 5);
+}
+
+#[parameterized(runner={run_llvm, run_interpreter})]
+fn test_srli_zero_extends_srli(runner: Runner) {
+    let instructions = [
+        Instruction::Lb(Load {
+            offset: 0,
+            rs: 1,
+            rd: 2,
+        }),
+        Instruction::Srli(Immediate {
+            value: 2,
+            rs: 2,
+            rd: 2,
+        }),
+        Instruction::Sh(Store {
+            offset: 10,
+            rs: 2,
+            rd: 3, // defaults to 0
+        }),
+    ];
+    let mut memory = [0u8; 64];
+    memory[0] = -1i8 as u8;
+    runner(&instructions, &mut memory);
+    let value = LittleEndian::read_u16(&memory[20..]);
+    assert_eq!(value, 0b11111111111111);
+    assert_eq!(value, 16383);
 }
