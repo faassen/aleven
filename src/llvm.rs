@@ -196,6 +196,9 @@ impl<'ctx> CodeGen<'ctx> {
                 Instruction::Target(_target) => {
                     // do nothing
                 }
+                Instruction::Call(call) => {
+                    // self.compile_call(registers, call, function);
+                }
             }
             if !branched {
                 self.builder.build_unconditional_branch(next_instr_block);

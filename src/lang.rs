@@ -42,6 +42,11 @@ pub struct BranchTarget {
     pub identifier: u8,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct CallId {
+    pub identifier: u16,
+}
+
 #[derive(EnumDiscriminants, Debug, PartialEq, Eq, Clone)]
 #[strum_discriminants(derive(FromPrimitive, ToPrimitive))]
 #[strum_discriminants(name(Opcode))]
@@ -72,6 +77,7 @@ pub enum Instruction {
     Sb(Store),
     Beq(Branch),
     Target(BranchTarget),
+    Call(CallId),
 }
 
 #[derive(Debug)]
@@ -108,7 +114,7 @@ impl Processor {
     }
 }
 
-impl Default for Processor {
+impl<'a> Default for Processor {
     fn default() -> Self {
         Self::new()
     }
@@ -378,6 +384,7 @@ impl Instruction {
             Instruction::Target(_target) => {
                 // this is a no-op, as targets are only used for branches
             }
+            Instruction::Call(call) => {}
         }
     }
 }

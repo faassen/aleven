@@ -1,4 +1,6 @@
-use crate::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Opcode, Register, Store};
+use crate::lang::{
+    Branch, BranchTarget, CallId, Immediate, Instruction, Load, Opcode, Register, Store,
+};
 use byteorder::{ByteOrder, LittleEndian};
 
 pub struct Assembler {}
@@ -94,6 +96,7 @@ impl Opcode {
             Sh | Sb => Store::size(),
             Beq => Branch::size(),
             Target => BranchTarget::size(),
+            Call => CallId::size(),
         }
     }
     fn disassemble(&self, values: &[u8]) -> Instruction {
@@ -125,6 +128,7 @@ impl Opcode {
             Sb => Instruction::Sb(Store::disassemble(values)),
             Beq => Instruction::Beq(Branch::disassemble(values)),
             Target => Instruction::Target(BranchTarget::disassemble(values)),
+            Call => Instruction::Call(CallId::disassemble(values)),
         }
     }
 }
@@ -253,6 +257,23 @@ impl ValueDisassembler for BranchTarget {
 impl ValueAssembler for BranchTarget {
     fn assemble(&self, output: &mut Vec<u8>) {
         output.push(self.identifier);
+    }
+}
+
+impl ValueDisassembler for CallId {
+    fn size() -> usize {
+        2
+    }
+    fn disassemble(input: &[u8]) -> Self {
+        CallId {
+            identifier: bytes_to_u16(&input[0..2]),
+        }
+    }
+}
+
+impl ValueAssembler for CallId {
+    fn assemble(&self, output: &mut Vec<u8>) {
+        output.extend(u16_to_bytes(self.identifier));
     }
 }
 

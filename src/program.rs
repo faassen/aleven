@@ -5,6 +5,7 @@ use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
 use rustc_hash::FxHashMap;
 
+#[derive(Debug)]
 pub struct Program {
     instructions: Vec<Instruction>,
 }
