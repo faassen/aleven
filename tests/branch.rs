@@ -1,4 +1,4 @@
-use aleven::{Branch, BranchTarget, Instruction, Load, Store};
+use aleven::{Branch, BranchTarget, Immediate, Instruction, Load, Store};
 use parameterized::parameterized;
 
 mod run;
@@ -151,4 +151,35 @@ fn test_beq_earlier_target_means_nop(runner: Runner) {
     memory[2] = 30;
     runner(&instructions, &mut memory);
     assert_eq!(memory[10], 30);
+}
+
+#[parameterized(runner={run_llvm, run_interpreter})]
+fn test_addi_after_beq(runner: Runner) {
+    use Instruction::*;
+    let instructions = [
+        Target(BranchTarget { identifier: 176 }),
+        Lh(Load {
+            offset: 8728,
+            rs: 24,
+            rd: 24,
+        }),
+        Beq(Branch {
+            target: 255,
+            rs1: 31,
+            rs2: 31,
+        }),
+        Addi(Immediate {
+            value: 6168,
+            rs: 24,
+            rd: 24,
+        }),
+        Target(BranchTarget { identifier: 255 }),
+        Addi(Immediate {
+            value: 0,
+            rs: 24,
+            rd: 24,
+        }),
+    ];
+    let mut memory = [0u8; 64];
+    runner(&instructions, &mut memory);
 }
