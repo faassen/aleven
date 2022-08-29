@@ -6,7 +6,7 @@ mod run;
 use run::{run_interpreter, run_llvm, Runner};
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_add_immediate_basic(runner: Runner) {
+fn test_addi_basic(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 33,
@@ -26,7 +26,7 @@ fn test_add_immediate_basic(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_add_immediate_register_has_value(runner: Runner) {
+fn test_addi_register_has_value(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 10,
@@ -51,7 +51,7 @@ fn test_add_immediate_register_has_value(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_add_immediate_register_rs_is_rd(runner: Runner) {
+fn test_addi_register_rs_is_rd(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 10,
@@ -76,7 +76,7 @@ fn test_add_immediate_register_rs_is_rd(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_add_immediate_register_dec(runner: Runner) {
+fn test_addi_register_dec(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 10,
@@ -101,7 +101,7 @@ fn test_add_immediate_register_dec(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slt_immediate_less(runner: Runner) {
+fn test_slti_less(runner: Runner) {
     let instructions = [
         Instruction::Slti(Immediate {
             value: 5,
@@ -120,7 +120,7 @@ fn test_slt_immediate_less(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slt_immediate_less_negative(runner: Runner) {
+fn test_slti_less_negative(runner: Runner) {
     let instructions = [
         Instruction::Slti(Immediate {
             value: -4,
@@ -139,7 +139,7 @@ fn test_slt_immediate_less_negative(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_sltu_immediate_less(runner: Runner) {
+fn test_sltiu_less(runner: Runner) {
     let instructions = [
         Instruction::Sltiu(Immediate {
             value: -4, // treated as large number instead
@@ -158,7 +158,7 @@ fn test_sltu_immediate_less(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slt_immediate_equal(runner: Runner) {
+fn test_slti_equal(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 5,
@@ -182,7 +182,7 @@ fn test_slt_immediate_equal(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_slt_immediate_greater(runner: Runner) {
+fn test_slti_greater(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 6,
@@ -206,7 +206,7 @@ fn test_slt_immediate_greater(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_and_immediate(runner: Runner) {
+fn test_andi(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 0b1010101,
@@ -230,7 +230,7 @@ fn test_and_immediate(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_or_immediate(runner: Runner) {
+fn test_ori(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 0b1010100,
@@ -254,7 +254,7 @@ fn test_or_immediate(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_xor_immediate(runner: Runner) {
+fn test_xori(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 0b1010100,
@@ -278,7 +278,7 @@ fn test_xor_immediate(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_sll_immediate(runner: Runner) {
+fn test_slli(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 5,
@@ -302,7 +302,7 @@ fn test_sll_immediate(runner: Runner) {
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
-fn test_sra_immediate(runner: Runner) {
+fn test_srai(runner: Runner) {
     let instructions = [
         Instruction::Addi(Immediate {
             value: 20,
