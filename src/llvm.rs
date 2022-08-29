@@ -9,13 +9,13 @@ use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
-use inkwell::values::{ArrayValue, FunctionValue, IntValue, PointerValue};
+use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
 use std::error::Error;
 
 pub type ProgramFunc = unsafe extern "C" fn(*mut u8) -> ();
-pub type InnerFunc = unsafe extern "C" fn(*mut u8, *const usize) -> ();
+pub type InnerFunc = unsafe extern "C" fn(*mut u8, *const u16) -> ();
 
 pub struct CodeGen<'ctx> {
     context: &'ctx Context,
@@ -73,7 +73,10 @@ impl<'ctx> CodeGen<'ctx> {
         let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
         let fn_type = void_type.fn_type(&[memory_ptr_type.into()], false);
 
-        let function = self.module.add_function("program", fn_type, None);
+        let id = 0;
+        let function = self
+            .module
+            .add_function(format!("func-{}", id).as_str(), fn_type, None);
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
         let ptr = function.get_nth_param(0)?.into_pointer_value();
@@ -158,7 +161,7 @@ impl<'ctx> CodeGen<'ctx> {
         // self.module.print_to_stderr();
         // save_asm(&self.module);
 
-        unsafe { self.execution_engine.get_function("program").ok() }
+        unsafe { self.execution_engine.get_function("func-0").ok() }
     }
 
     fn get_blocks(
