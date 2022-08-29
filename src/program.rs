@@ -3,15 +3,11 @@ use crate::lang::{Instruction, Processor};
 
 pub struct Program {
     functions: Vec<Function>,
-    main_id: usize,
 }
 
 impl Program {
     pub fn new(functions: Vec<Function>) -> Program {
-        Program {
-            functions,
-            main_id: 0,
-        }
+        Program { functions }
     }
 
     pub fn from_instructions(instructions: &[Instruction]) -> Program {
@@ -24,6 +20,10 @@ impl Program {
     }
 
     pub fn interpret_with_processor(&self, memory: &mut [u8], processor: &mut Processor) {
-        self.functions[self.main_id].interpret(memory, processor);
+        self.call(memory, processor, 0);
+    }
+
+    pub fn call(&self, memory: &mut [u8], processor: &mut Processor, id: usize) {
+        self.functions[id].interpret(memory, processor);
     }
 }
