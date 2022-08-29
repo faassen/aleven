@@ -83,7 +83,9 @@ impl<'ctx> CodeGen<'ctx> {
 
         let registers = Registers::new(self.context, &self.builder);
 
-        self.compile_function(instructions, ptr, memory_size, &registers, function)
+        self.compile_function(instructions, ptr, memory_size, &registers, function);
+
+        unsafe { self.execution_engine.get_function("func-0").ok() }
     }
 
     fn compile_function(
@@ -93,7 +95,7 @@ impl<'ctx> CodeGen<'ctx> {
         memory_size: u16,
         registers: &Registers<'ctx>,
         function: FunctionValue,
-    ) -> Option<JitFunction<ProgramFunc>> {
+    ) {
         let (blocks, targets) = self.get_blocks(function, instructions);
 
         let mut blocks_iter = blocks.iter();
@@ -160,8 +162,6 @@ impl<'ctx> CodeGen<'ctx> {
 
         // self.module.print_to_stderr();
         // save_asm(&self.module);
-
-        unsafe { self.execution_engine.get_function("func-0").ok() }
     }
 
     fn get_blocks(
