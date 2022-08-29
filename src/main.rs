@@ -4,9 +4,10 @@ extern crate num_derive;
 
 pub mod assemble;
 pub mod function;
-mod lang;
+pub mod lang;
 pub mod llvm;
-mod llvmasm;
+pub mod llvmasm;
+pub mod program;
 
 fn main() {
     llvm::main();

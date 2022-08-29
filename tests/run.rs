@@ -1,6 +1,7 @@
 use aleven::CodeGen;
 use aleven::Function;
 use aleven::Instruction;
+use aleven::Program;
 use inkwell::context::Context;
 
 pub type Runner = fn(&[Instruction], &mut [u8]);
@@ -15,5 +16,5 @@ pub fn run_llvm(instructions: &[Instruction], memory: &mut [u8]) {
 }
 
 pub fn run_interpreter(instructions: &[Instruction], memory: &mut [u8]) {
-    Function::new(instructions).interpret(memory);
+    Program::from_instructions(instructions).interpret(memory);
 }

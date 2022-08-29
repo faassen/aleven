@@ -3,8 +3,8 @@ extern crate aleven;
 use aleven::Assembler;
 use aleven::CodeGen;
 use aleven::Function;
+use aleven::Program;
 use inkwell::context::Context;
-use inkwell::OptimizationLevel;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
@@ -22,7 +22,7 @@ fuzz_target!(|data: &[u8]| {
     codegen.module.verify().unwrap();
     Function::run(func, &mut memory_llvm);
 
-    function.interpret(&mut memory_interpreter);
+    Program::from_instructions(&instructions).interpret(&mut memory_interpreter);
 
     // the effect should be the same
     assert_eq!(memory_llvm, memory_interpreter);

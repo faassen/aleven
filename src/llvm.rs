@@ -716,10 +716,10 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             rd: 2,
         }),
     ];
-    let program = Function::new(&instructions);
+    let function = Function::new(&instructions);
 
     println!("Compiling program");
-    let func = program.compile(&codegen, memory.len() as u16);
+    let func = function.compile(&codegen, memory.len() as u16);
     save_asm(&codegen.module);
 
     println!("Running program");
