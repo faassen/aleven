@@ -17,9 +17,9 @@ impl Function {
         }
     }
 
-    pub fn interpret(&self, memory: &mut [u8], processor: &mut Processor) {
+    pub fn interpret(&self, memory: &mut [u8], processor: &mut Processor, functions: &[Function]) {
         let targets = Function::targets(&self.instructions);
-        processor.execute(&self.instructions, memory, &targets);
+        processor.execute(&self.instructions, memory, &targets, functions);
     }
 
     pub fn compile<'ctx>(

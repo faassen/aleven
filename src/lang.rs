@@ -1,3 +1,4 @@
+use crate::function::Function;
 use byteorder::{ByteOrder, LittleEndian};
 use rustc_hash::FxHashMap;
 use strum_macros::EnumDiscriminants;
@@ -101,6 +102,7 @@ impl Processor {
         instructions: &[Instruction],
         memory: &mut [u8],
         targets: &FxHashMap<u8, usize>,
+        functions: &[Function],
     ) {
         while self.pc < instructions.len() {
             let instruction = &instructions[self.pc];

@@ -24,6 +24,6 @@ impl Program {
     }
 
     pub fn call(&self, memory: &mut [u8], processor: &mut Processor, id: usize) {
-        self.functions[id].interpret(memory, processor);
+        self.functions[id].interpret(memory, processor, &self.functions);
     }
 }
