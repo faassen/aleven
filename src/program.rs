@@ -1,5 +1,5 @@
 use crate::function::Function;
-use crate::lang::Instruction;
+use crate::lang::{Instruction, Processor};
 
 pub struct Program {
     functions: Vec<Function>,
@@ -19,6 +19,11 @@ impl Program {
     }
 
     pub fn interpret(&self, memory: &mut [u8]) {
-        self.functions[self.main_id].interpret(memory);
+        let mut processor = Processor::new();
+        self.interpret_with_processor(memory, &mut processor);
+    }
+
+    pub fn interpret_with_processor(&self, memory: &mut [u8], processor: &mut Processor) {
+        self.functions[self.main_id].interpret(memory, processor);
     }
 }
