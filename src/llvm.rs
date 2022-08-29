@@ -1,5 +1,5 @@
 use crate::function::Function;
-use crate::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
+use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 use crate::llvmasm::save_asm;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
@@ -125,6 +125,7 @@ impl<'ctx> CodeGen<'ctx> {
         id: u16,
         instructions: &[Instruction],
         memory_size: u16,
+        functions: &[FunctionValue],
     ) -> FunctionValue<'ctx> {
         let function = self.module.add_function(
             format!("inner-{}", id).as_str(),
@@ -135,6 +136,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.builder.position_at_end(basic_block);
 
         let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
+        let registers_ptr = function.get_nth_param(1).unwrap().into_pointer_value();
 
         let registers = &Registers::new(self, function);
 
@@ -195,7 +197,7 @@ impl<'ctx> CodeGen<'ctx> {
                     // do nothing
                 }
                 Instruction::Call(call) => {
-                    // self.compile_call(registers, call, function);
+                    self.compile_call(call, memory_ptr, registers_ptr, functions);
                 }
             }
             if !branched {
@@ -691,6 +693,21 @@ impl<'ctx> CodeGen<'ctx> {
         } else {
             self.builder.build_unconditional_branch(next_block);
         }
+    }
+
+    fn compile_call(
+        &self,
+        call: &CallId,
+        memory_ptr: PointerValue,
+        registers_ptr: PointerValue,
+        functions: &[FunctionValue],
+    ) {
+        let identifier = call.identifier as usize;
+        self.builder.build_call(
+            functions[identifier],
+            &[memory_ptr.into(), registers_ptr.into()],
+            "call",
+        );
     }
 }
 
