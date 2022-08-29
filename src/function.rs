@@ -3,6 +3,7 @@ use crate::lang::Processor;
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
+use inkwell::values::FunctionValue;
 use rustc_hash::FxHashMap;
 
 #[derive(Debug)]
@@ -22,11 +23,16 @@ impl Function {
         processor.execute(&self.instructions, memory, &targets, functions);
     }
 
-    // pub fn compile2<'ctx>(&self, id: u16, codegen: &'ctx CodeGen, memory_len: u16) {
-    //     codegen.compile_function(id, &self.instructions, memory_len)
-    // }
-
     pub fn compile<'ctx>(
+        &self,
+        id: u16,
+        codegen: &'ctx CodeGen,
+        memory_len: u16,
+    ) -> FunctionValue<'ctx> {
+        codegen.compile_function(id, &self.instructions, memory_len)
+    }
+
+    pub fn compile_program<'ctx>(
         &self,
         codegen: &'ctx CodeGen,
         memory_len: u16,

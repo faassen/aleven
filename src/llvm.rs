@@ -100,7 +100,7 @@ impl<'ctx> CodeGen<'ctx> {
                 .build_store(register_ptr, self.context.i16_type().const_int(0, false));
         }
 
-        let inner_function = self.compile_function(0, instructions, memory_size, registers_ptr);
+        let inner_function = self.compile_function(0, instructions, memory_size);
 
         self.builder.position_at_end(basic_block);
         self.builder.build_call(
@@ -116,27 +116,23 @@ impl<'ctx> CodeGen<'ctx> {
         unsafe { self.execution_engine.get_function("func-0").ok() }
     }
 
-    fn get_function_type(&self, registers_ptr: PointerValue<'ctx>) -> FunctionType<'ctx> {
-        let i8_type = self.context.i8_type();
+    fn get_function_type(&self) -> FunctionType<'ctx> {
         let void_type = self.context.void_type();
-        let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
+        let memory_ptr_type = self.context.i8_type().ptr_type(AddressSpace::Generic);
+        let registers_ptr_type = self.context.i16_type().ptr_type(AddressSpace::Generic);
 
-        void_type.fn_type(
-            &[memory_ptr_type.into(), registers_ptr.get_type().into()],
-            false,
-        )
+        void_type.fn_type(&[memory_ptr_type.into(), registers_ptr_type.into()], false)
     }
 
-    fn compile_function(
+    pub fn compile_function(
         &self,
         id: u16,
         instructions: &[Instruction],
         memory_size: u16,
-        registers_ptr: PointerValue<'ctx>,
     ) -> FunctionValue<'ctx> {
         let function = self.module.add_function(
             format!("inner-{}", id).as_str(),
-            self.get_function_type(registers_ptr),
+            self.get_function_type(),
             None,
         );
         let basic_block = self.context.append_basic_block(function, "entry");
@@ -726,7 +722,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let function = Function::new(&instructions);
 
     println!("Compiling program");
-    let func = function.compile(&codegen, memory.len() as u16);
+    let func = function.compile_program(&codegen, memory.len() as u16);
     save_asm(&codegen.module);
 
     println!("Running program");

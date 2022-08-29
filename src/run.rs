@@ -11,7 +11,7 @@ pub fn run_llvm_func(instructions: &[Instruction], memory: &mut [u8]) {
     let function = Function::new(instructions);
     let context = Context::create();
     let codegen = CodeGen::new(&context);
-    let func = function.compile(&codegen, memory.len() as u16);
+    let func = function.compile_program(&codegen, memory.len() as u16);
     codegen.module.verify().unwrap();
     Function::run(func, memory);
 }
