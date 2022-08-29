@@ -9,7 +9,7 @@ use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
-use inkwell::types::{BasicMetadataTypeEnum, PointerType};
+use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::{BasicMetadataValueEnum, FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
@@ -25,39 +25,21 @@ pub struct CodeGen<'ctx> {
     execution_engine: ExecutionEngine<'ctx>,
 }
 
-struct RegistersCreation<'a>(Vec<PointerValue<'a>>);
-
-impl<'a> RegistersCreation<'a> {
-    fn new(context: &'a Context, builder: &Builder<'a>) -> RegistersCreation<'a> {
-        let mut registers = Vec::new();
-        for _i in 0..32 {
-            let alloc_a = builder.build_alloca(context.i16_type(), "memory");
-            builder.build_store(alloc_a, context.i16_type().const_int(0, false));
-            registers.push(alloc_a);
-        }
-        RegistersCreation(registers)
-    }
-
-    fn pointer_types(&self) -> Vec<PointerType<'a>> {
-        self.0.iter().map(|v| v.get_type()).collect()
-    }
-
-    fn pointer_values(&self) -> &[PointerValue<'a>] {
-        &self.0
-    }
-
-    fn get(&self, index: u8) -> PointerValue<'a> {
-        self.0[index as usize]
-    }
-}
-
 struct Registers<'a>(Vec<PointerValue<'a>>);
 
 impl<'a> Registers<'a> {
-    fn new(function: FunctionValue<'a>) -> Self {
+    fn new(codegen: &CodeGen<'a>, function: FunctionValue<'a>) -> Self {
+        let registers_ptr = function.get_nth_param(1).unwrap().into_pointer_value();
+
         let mut registers = Vec::new();
         for i in 0..32 {
-            let register_ptr = function.get_nth_param(1 + i).unwrap().into_pointer_value();
+            let register_ptr = unsafe {
+                codegen.builder.build_gep(
+                    registers_ptr,
+                    &[codegen.context.i16_type().const_int(i, false)],
+                    "register",
+                )
+            };
             registers.push(register_ptr);
         }
         Registers(registers)
@@ -105,15 +87,25 @@ impl<'ctx> CodeGen<'ctx> {
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
 
-        let registers_creation = RegistersCreation::new(self.context, &self.builder);
-
-        let mut inner_param_types: Vec<BasicMetadataTypeEnum> = vec![memory_ptr_type.into()];
-        inner_param_types.extend(
-            registers_creation
-                .pointer_types()
-                .iter()
-                .map(|v| std::convert::Into::<BasicMetadataTypeEnum>::into(*v)),
+        let registers_ptr = self.builder.build_array_alloca(
+            self.context.i16_type(),
+            self.context.i16_type().const_int(32, false),
+            "registers",
         );
+        for i in 0..32 {
+            let register_ptr = unsafe {
+                self.builder.build_gep(
+                    registers_ptr,
+                    &[self.context.i16_type().const_int(i, false)],
+                    "register",
+                )
+            };
+            self.builder
+                .build_store(register_ptr, self.context.i16_type().const_int(0, false));
+        }
+
+        let inner_param_types: Vec<BasicMetadataTypeEnum> =
+            vec![memory_ptr_type.into(), registers_ptr.get_type().into()];
 
         let inner_fn_type = void_type.fn_type(&inner_param_types, false);
         let id = 0;
@@ -121,16 +113,10 @@ impl<'ctx> CodeGen<'ctx> {
             self.module
                 .add_function(format!("inner-{}", id).as_str(), inner_fn_type, None);
 
-        let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
         let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
 
-        let mut inner_params: Vec<BasicMetadataValueEnum> = vec![memory_ptr.into()];
-        inner_params.extend(
-            registers_creation
-                .pointer_values()
-                .iter()
-                .map(|v| std::convert::Into::<BasicMetadataValueEnum>::into(*v)),
-        );
+        let inner_params: Vec<BasicMetadataValueEnum> =
+            vec![memory_ptr.into(), registers_ptr.into()];
 
         self.builder
             .build_call(inner_function, &inner_params, "call");
@@ -154,12 +140,9 @@ impl<'ctx> CodeGen<'ctx> {
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
 
-        let i8_type = self.context.i8_type();
-        let void_type = self.context.void_type();
-        let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
         let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
 
-        let registers = &Registers::new(function);
+        let registers = &Registers::new(self, function);
 
         let (blocks, targets) = self.get_blocks(function, instructions);
 
@@ -757,26 +740,15 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     use Instruction::*;
     let instructions = [
         Target(BranchTarget { identifier: 176 }),
-        Lh(Load {
-            offset: 8728,
-            rs: 24,
-            rd: 24,
+        Lb(Load {
+            offset: 0,
+            rs: 1,
+            rd: 1,
         }),
-        Beq(Branch {
-            target: 255,
-            rs1: 24,
-            rs2: 31,
-        }),
-        Addi(Immediate {
-            value: 6168,
-            rs: 24,
-            rd: 24,
-        }),
-        Target(BranchTarget { identifier: 255 }),
-        Addi(Immediate {
-            value: 0,
-            rs: 24,
-            rd: 24,
+        Sb(Store {
+            offset: 10,
+            rs: 1,
+            rd: 2,
         }),
     ];
     let program = Program::new(&instructions);
@@ -821,7 +793,7 @@ mod tests {
     }
 
     #[parameterized(runner={run_llvm, run_interpreter})]
-    fn test_add_immediate(runner: Runner) {
+    fn test_add_immediate_basic(runner: Runner) {
         let instructions = [
             Instruction::Addi(Immediate {
                 value: 33,
