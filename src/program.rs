@@ -7,11 +7,15 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn from_instructions(instructions: &[Instruction]) -> Program {
+    pub fn new(functions: Vec<Function>) -> Program {
         Program {
-            functions: vec![Function::new(instructions)],
+            functions,
             main_id: 0,
         }
+    }
+
+    pub fn from_instructions(instructions: &[Instruction]) -> Program {
+        Program::new(vec![Function::new(instructions)])
     }
 
     pub fn interpret(&self, memory: &mut [u8]) {
