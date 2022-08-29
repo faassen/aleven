@@ -28,7 +28,7 @@ impl Function {
         id: u16,
         codegen: &'ctx CodeGen,
         memory_len: u16,
-        functions: &[FunctionValue],
+        functions: &FxHashMap<u16, FunctionValue<'ctx>>,
     ) -> FunctionValue<'ctx> {
         codegen.compile_function(id, &self.instructions, memory_len, functions)
     }
@@ -38,8 +38,9 @@ impl Function {
         codegen: &'ctx CodeGen,
         memory_len: u16,
     ) -> JitFunction<'ctx, ProgramFunc> {
-        let inner_function = self.compile(0, codegen, memory_len, &[]);
-        let functions = vec![inner_function];
+        let inner_function = self.compile(0, codegen, memory_len, &FxHashMap::default());
+        let mut functions = FxHashMap::default();
+        functions.insert(0, inner_function);
         let llvm_program = codegen
             .compile_program(&functions)
             .expect("Unable to JIT compile `program`");

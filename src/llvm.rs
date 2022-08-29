@@ -65,7 +65,10 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    pub fn compile_program(&self, functions: &[FunctionValue]) -> Option<JitFunction<ProgramFunc>> {
+    pub fn compile_program(
+        &self,
+        functions: &FxHashMap<u16, FunctionValue>,
+    ) -> Option<JitFunction<ProgramFunc>> {
         let i8_type = self.context.i8_type();
         let void_type = self.context.void_type();
         let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
@@ -96,11 +99,11 @@ impl<'ctx> CodeGen<'ctx> {
                 .build_store(register_ptr, self.context.i16_type().const_int(0, false));
         }
 
-        let inner_function = functions[0];
+        let inner_function = functions.get(&0).unwrap();
 
         self.builder.position_at_end(basic_block);
         self.builder.build_call(
-            inner_function,
+            *inner_function,
             &[memory_ptr.into(), registers_ptr.into()],
             "call",
         );
@@ -125,7 +128,7 @@ impl<'ctx> CodeGen<'ctx> {
         id: u16,
         instructions: &[Instruction],
         memory_size: u16,
-        functions: &[FunctionValue],
+        functions: &FxHashMap<u16, FunctionValue>,
     ) -> FunctionValue<'ctx> {
         let function = self.module.add_function(
             format!("inner-{}", id).as_str(),
@@ -700,11 +703,11 @@ impl<'ctx> CodeGen<'ctx> {
         call: &CallId,
         memory_ptr: PointerValue,
         registers_ptr: PointerValue,
-        functions: &[FunctionValue],
+        functions: &FxHashMap<u16, FunctionValue>,
     ) {
-        let identifier = call.identifier as usize;
+        let identifier = call.identifier;
         self.builder.build_call(
-            functions[identifier],
+            *functions.get(&identifier).unwrap(),
             &[memory_ptr.into(), registers_ptr.into()],
             "call",
         );
