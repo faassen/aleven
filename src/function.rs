@@ -37,8 +37,10 @@ impl Function {
         codegen: &'ctx CodeGen,
         memory_len: u16,
     ) -> JitFunction<'ctx, ProgramFunc> {
+        let inner_function = self.compile(0, codegen, memory_len);
+        let functions = vec![inner_function];
         let llvm_program = codegen
-            .compile_program(&self.instructions, memory_len)
+            .compile_program(&functions)
             .expect("Unable to JIT compile `program`");
         llvm_program
     }
