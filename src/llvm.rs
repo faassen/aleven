@@ -1,6 +1,6 @@
+use crate::function::Function;
 use crate::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
 use crate::llvmasm::save_asm;
-use crate::program::Program;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -716,14 +716,14 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             rd: 2,
         }),
     ];
-    let program = Program::new(&instructions);
+    let program = Function::new(&instructions);
 
     println!("Compiling program");
     let func = program.compile(&codegen, memory.len() as u16);
     save_asm(&codegen.module);
 
     println!("Running program");
-    Program::run(func, &mut memory);
+    Function::run(func, &mut memory);
     println!("Memory");
     println!("{:?}", memory);
 

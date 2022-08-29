@@ -6,20 +6,20 @@ use inkwell::execution_engine::JitFunction;
 use rustc_hash::FxHashMap;
 
 #[derive(Debug)]
-pub struct Program {
+pub struct Function {
     instructions: Vec<Instruction>,
 }
 
-impl Program {
-    pub fn new(instructions: &[Instruction]) -> Program {
-        Program {
-            instructions: Program::cleanup(instructions),
+impl Function {
+    pub fn new(instructions: &[Instruction]) -> Function {
+        Function {
+            instructions: Function::cleanup(instructions),
         }
     }
 
     pub fn interpret(&self, memory: &mut [u8]) {
         let mut processor = Processor::new();
-        let targets = Program::targets(&self.instructions);
+        let targets = Function::targets(&self.instructions);
         processor.execute(&self.instructions, memory, &targets);
     }
 
@@ -47,7 +47,7 @@ impl Program {
     fn cleanup(instructions: &[Instruction]) -> Vec<Instruction> {
         // clean up program by removing branching instructions that don't have
         // targets or point to a target that's earlier
-        let targets = Program::targets(instructions);
+        let targets = Function::targets(instructions);
         let mut result = Vec::new();
 
         for (index, instruction) in instructions.iter().enumerate() {
