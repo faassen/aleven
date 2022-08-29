@@ -9,7 +9,8 @@ use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
-use inkwell::values::{FunctionValue, IntValue, PointerValue};
+use inkwell::types::{BasicMetadataTypeEnum, PointerType};
+use inkwell::values::{BasicMetadataValueEnum, FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
 use std::error::Error;
@@ -24,15 +25,40 @@ pub struct CodeGen<'ctx> {
     execution_engine: ExecutionEngine<'ctx>,
 }
 
-struct Registers<'a>(Vec<PointerValue<'a>>);
+struct RegistersCreation<'a>(Vec<PointerValue<'a>>);
 
-impl<'a> Registers<'a> {
-    fn new(context: &'a Context, builder: &Builder<'a>) -> Registers<'a> {
+impl<'a> RegistersCreation<'a> {
+    fn new(context: &'a Context, builder: &Builder<'a>) -> RegistersCreation<'a> {
         let mut registers = Vec::new();
         for _i in 0..32 {
             let alloc_a = builder.build_alloca(context.i16_type(), "memory");
             builder.build_store(alloc_a, context.i16_type().const_int(0, false));
             registers.push(alloc_a);
+        }
+        RegistersCreation(registers)
+    }
+
+    fn pointer_types(&self) -> Vec<PointerType<'a>> {
+        self.0.iter().map(|v| v.get_type()).collect()
+    }
+
+    fn pointer_values(&self) -> &[PointerValue<'a>] {
+        &self.0
+    }
+
+    fn get(&self, index: u8) -> PointerValue<'a> {
+        self.0[index as usize]
+    }
+}
+
+struct Registers<'a>(Vec<PointerValue<'a>>);
+
+impl<'a> Registers<'a> {
+    fn new(function: FunctionValue<'a>) -> Self {
+        let mut registers = Vec::new();
+        for i in 0..32 {
+            let register_ptr = function.get_nth_param(1 + i).unwrap().into_pointer_value();
+            registers.push(register_ptr);
         }
         Registers(registers)
     }
@@ -67,7 +93,6 @@ impl<'ctx> CodeGen<'ctx> {
         memory_size: u16,
     ) -> Option<JitFunction<ProgramFunc>> {
         let i8_type = self.context.i8_type();
-        let i16_type = self.context.i16_type();
 
         let void_type = self.context.void_type();
         let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
@@ -80,9 +105,42 @@ impl<'ctx> CodeGen<'ctx> {
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
 
-        let registers = Registers::new(self.context, &self.builder);
+        let registers_creation = RegistersCreation::new(self.context, &self.builder);
 
-        self.compile_function(instructions, memory_size, &registers, function);
+        let mut inner_param_types: Vec<BasicMetadataTypeEnum> = vec![memory_ptr_type.into()];
+        inner_param_types.extend(
+            registers_creation
+                .pointer_types()
+                .iter()
+                .map(|v| std::convert::Into::<BasicMetadataTypeEnum>::into(*v)),
+        );
+
+        let inner_fn_type = void_type.fn_type(&inner_param_types, false);
+        let id = 0;
+        let inner_function =
+            self.module
+                .add_function(format!("inner-{}", id).as_str(), inner_fn_type, None);
+
+        let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
+        let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
+
+        let mut inner_params: Vec<BasicMetadataValueEnum> = vec![memory_ptr.into()];
+        inner_params.extend(
+            registers_creation
+                .pointer_values()
+                .iter()
+                .map(|v| std::convert::Into::<BasicMetadataValueEnum>::into(*v)),
+        );
+
+        self.builder
+            .build_call(inner_function, &inner_params, "call");
+        self.compile_function(instructions, memory_size, inner_function);
+
+        self.builder.position_at_end(basic_block);
+        self.builder.build_return(None);
+
+        // self.module.print_to_stderr();
+        // save_asm(&self.module);
 
         unsafe { self.execution_engine.get_function("func-0").ok() }
     }
@@ -91,10 +149,17 @@ impl<'ctx> CodeGen<'ctx> {
         &self,
         instructions: &[Instruction],
         memory_size: u16,
-        registers: &Registers<'ctx>,
         function: FunctionValue<'ctx>,
     ) {
+        let basic_block = self.context.append_basic_block(function, "entry");
+        self.builder.position_at_end(basic_block);
+
+        let i8_type = self.context.i8_type();
+        let void_type = self.context.void_type();
+        let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
         let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
+
+        let registers = &Registers::new(function);
 
         let (blocks, targets) = self.get_blocks(function, instructions);
 
@@ -159,9 +224,6 @@ impl<'ctx> CodeGen<'ctx> {
         }
         self.builder.position_at_end(next_instr_block);
         self.builder.build_return(None);
-
-        // self.module.print_to_stderr();
-        // save_asm(&self.module);
     }
 
     fn get_blocks(
