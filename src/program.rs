@@ -16,7 +16,8 @@ impl Program {
         }
     }
 
-    pub fn interpret(&self, processor: &mut Processor, memory: &mut [u8]) {
+    pub fn interpret(&self, memory: &mut [u8]) {
+        let mut processor = Processor::new();
         let targets = Program::targets(&self.instructions);
         processor.execute(&self.instructions, memory, &targets);
     }

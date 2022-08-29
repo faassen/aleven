@@ -1,7 +1,6 @@
 #![no_main]
 extern crate aleven;
 use aleven::assemble::Assembler;
-use aleven::lang::Processor;
 use aleven::llvm::CodeGen;
 use aleven::program::Program;
 use inkwell::context::Context;
@@ -23,8 +22,7 @@ fuzz_target!(|data: &[u8]| {
     codegen.module.verify().unwrap();
     Program::run(func, &mut memory_llvm);
 
-    let mut processor = Processor::new();
-    program.interpret(&mut processor, &mut memory_interpreter);
+    program.interpret(&mut memory_interpreter);
 
     // the effect should be the same
     assert_eq!(memory_llvm, memory_interpreter);

@@ -1,5 +1,4 @@
 use aleven::assemble::Assembler;
-use aleven::lang::Processor;
 use aleven::lang::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
 use aleven::llvm::CodeGen;
 use aleven::program::Program;
@@ -19,8 +18,7 @@ fn run_llvm(instructions: &[Instruction], memory: &mut [u8]) {
 }
 
 fn run_interpreter(instructions: &[Instruction], memory: &mut [u8]) {
-    let mut processor = Processor::new();
-    Program::new(instructions).interpret(&mut processor, memory);
+    Program::new(instructions).interpret(memory);
 }
 
 #[parameterized(runner={run_llvm, run_interpreter})]
