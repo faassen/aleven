@@ -5,6 +5,7 @@ extern crate num_derive;
 mod assemble;
 mod lang;
 mod llvm;
+mod llvmasm;
 mod program;
 
 pub use assemble::Assembler;
