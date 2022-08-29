@@ -1,10 +1,7 @@
+use aleven::run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 use aleven::{Immediate, Instruction, Load, Store};
 use byteorder::{ByteOrder, LittleEndian};
 use parameterized::parameterized;
-
-mod run;
-
-use run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_addi_basic(runner: RunnerFunc) {

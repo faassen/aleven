@@ -1,9 +1,6 @@
+use aleven::run::{run_interpreter_program, RunnerProgram};
 use aleven::{CallId, Instruction, Load, Store};
 use parameterized::parameterized;
-
-mod run;
-
-use run::{run_interpreter_program, RunnerProgram};
 
 #[parameterized(runner={run_interpreter_program})]
 fn test_call(runner: RunnerProgram) {

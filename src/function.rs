@@ -22,6 +22,10 @@ impl Function {
         processor.execute(&self.instructions, memory, &targets, functions);
     }
 
+    // pub fn compile2<'ctx>(&self, id: u16, codegen: &'ctx CodeGen, memory_len: u16) {
+    //     codegen.compile_function(id, &self.instructions, memory_len)
+    // }
+
     pub fn compile<'ctx>(
         &self,
         codegen: &'ctx CodeGen,

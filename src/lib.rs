@@ -8,6 +8,7 @@ mod lang;
 mod llvm;
 mod llvmasm;
 mod program;
+pub mod run;
 
 pub use assemble::Assembler;
 pub use function::Function;

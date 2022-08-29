@@ -1,10 +1,7 @@
+use aleven::run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 use aleven::Assembler;
 use aleven::{Immediate, Instruction, Load, Register, Store};
 use parameterized::parameterized;
-
-mod run;
-
-use run::{run_interpreter_func, run_llvm_func, RunnerFunc};
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug1(runner: RunnerFunc) {

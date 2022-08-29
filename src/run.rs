@@ -1,7 +1,7 @@
-use aleven::CodeGen;
-use aleven::Function;
-use aleven::Instruction;
-use aleven::Program;
+use crate::function::Function;
+use crate::lang::Instruction;
+use crate::llvm::CodeGen;
+use crate::program::Program;
 use inkwell::context::Context;
 
 pub type RunnerFunc = fn(&[Instruction], &mut [u8]);

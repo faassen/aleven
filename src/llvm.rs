@@ -6,8 +6,8 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
-use inkwell::types::BasicMetadataTypeEnum;
-use inkwell::values::{BasicMetadataValueEnum, FunctionValue, IntValue, PointerValue};
+use inkwell::types::FunctionType;
+use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use rustc_hash::FxHashMap;
 use std::error::Error;
@@ -71,7 +71,6 @@ impl<'ctx> CodeGen<'ctx> {
         memory_size: u16,
     ) -> Option<JitFunction<ProgramFunc>> {
         let i8_type = self.context.i8_type();
-
         let void_type = self.context.void_type();
         let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
         let fn_type = void_type.fn_type(&[memory_ptr_type.into()], false);
@@ -83,6 +82,7 @@ impl<'ctx> CodeGen<'ctx> {
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
 
+        let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
         let registers_ptr = self.builder.build_array_alloca(
             self.context.i16_type(),
             self.context.i16_type().const_int(32, false),
@@ -100,25 +100,14 @@ impl<'ctx> CodeGen<'ctx> {
                 .build_store(register_ptr, self.context.i16_type().const_int(0, false));
         }
 
-        let inner_param_types: Vec<BasicMetadataTypeEnum> =
-            vec![memory_ptr_type.into(), registers_ptr.get_type().into()];
-
-        let inner_fn_type = void_type.fn_type(&inner_param_types, false);
-        let id = 0;
-        let inner_function =
-            self.module
-                .add_function(format!("inner-{}", id).as_str(), inner_fn_type, None);
-
-        let memory_ptr = function.get_nth_param(0).unwrap().into_pointer_value();
-
-        let inner_params: Vec<BasicMetadataValueEnum> =
-            vec![memory_ptr.into(), registers_ptr.into()];
-
-        self.builder
-            .build_call(inner_function, &inner_params, "call");
-        self.compile_function(instructions, memory_size, inner_function);
+        let inner_function = self.compile_function(0, instructions, memory_size, registers_ptr);
 
         self.builder.position_at_end(basic_block);
+        self.builder.build_call(
+            inner_function,
+            &[memory_ptr.into(), registers_ptr.into()],
+            "call",
+        );
         self.builder.build_return(None);
 
         // self.module.print_to_stderr();
@@ -127,12 +116,29 @@ impl<'ctx> CodeGen<'ctx> {
         unsafe { self.execution_engine.get_function("func-0").ok() }
     }
 
+    fn get_function_type(&self, registers_ptr: PointerValue<'ctx>) -> FunctionType<'ctx> {
+        let i8_type = self.context.i8_type();
+        let void_type = self.context.void_type();
+        let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
+
+        void_type.fn_type(
+            &[memory_ptr_type.into(), registers_ptr.get_type().into()],
+            false,
+        )
+    }
+
     fn compile_function(
         &self,
+        id: u16,
         instructions: &[Instruction],
         memory_size: u16,
-        function: FunctionValue<'ctx>,
-    ) {
+        registers_ptr: PointerValue<'ctx>,
+    ) -> FunctionValue<'ctx> {
+        let function = self.module.add_function(
+            format!("inner-{}", id).as_str(),
+            self.get_function_type(registers_ptr),
+            None,
+        );
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
 
@@ -206,6 +212,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
         self.builder.position_at_end(next_instr_block);
         self.builder.build_return(None);
+        function
     }
 
     fn get_blocks(

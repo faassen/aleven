@@ -8,6 +8,7 @@ pub mod lang;
 pub mod llvm;
 pub mod llvmasm;
 pub mod program;
+pub mod run;
 
 fn main() {
     llvm::main();
