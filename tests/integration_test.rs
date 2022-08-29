@@ -1,25 +1,11 @@
 use aleven::Assembler;
-use aleven::CodeGen;
-use aleven::Program;
 use aleven::{Branch, BranchTarget, Immediate, Instruction, Load, Register, Store};
 use byteorder::{ByteOrder, LittleEndian};
-use inkwell::context::Context;
 use parameterized::parameterized;
 
-type Runner = fn(&[Instruction], &mut [u8]);
+mod run;
 
-fn run_llvm(instructions: &[Instruction], memory: &mut [u8]) {
-    let program = Program::new(instructions);
-    let context = Context::create();
-    let codegen = CodeGen::new(&context);
-    let func = program.compile(&codegen, memory.len() as u16);
-    codegen.module.verify().unwrap();
-    Program::run(func, memory);
-}
-
-fn run_interpreter(instructions: &[Instruction], memory: &mut [u8]) {
-    Program::new(instructions).interpret(memory);
-}
+use run::{run_interpreter, run_llvm, Runner};
 
 #[parameterized(runner={run_llvm, run_interpreter})]
 fn test_add_immediate_basic(runner: Runner) {
