@@ -4,8 +4,6 @@ use crate::lang::{Instruction, Processor};
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
-use inkwell::values::FunctionValue;
-use rustc_hash::{FxHashMap, FxHashSet};
 
 pub struct Program {
     functions: Vec<Function>,
