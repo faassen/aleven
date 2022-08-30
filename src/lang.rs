@@ -118,7 +118,7 @@ impl Processor {
     }
 }
 
-impl<'a> Default for Processor {
+impl Default for Processor {
     fn default() -> Self {
         Self::new()
     }

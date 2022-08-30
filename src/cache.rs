@@ -50,26 +50,34 @@ impl<'ctx> FunctionValueCache<'ctx> {
         let call_ids = function.get_call_ids();
 
         let mut result = FxHashMap::default();
-        for dependency_call_id in call_ids {
+        for dependency_call_id in &call_ids {
             let dependency_map =
-                self.compile_internal(dependency_call_id, program, codegen, memory_size);
+                self.compile_internal(*dependency_call_id, program, codegen, memory_size);
             result.extend(dependency_map);
         }
 
-        // now we have the information required to compile this function
-        let function_value = function.compile(
-            self.current_function_value_id,
-            codegen,
-            memory_size,
-            &FunctionValueCache::convert_dependencies(&result),
-        );
-        // XXX calculate dependency array from CallId to FunctionValueId
-        let function_value_ids = Vec::new();
-        self.cache.insert(
-            (function.get_instructions(), function_value_ids),
-            (self.current_function_value_id, function_value),
-        );
-        result.insert(call_id, (self.current_function_value_id, function_value));
+        // get function value ids for dependencies
+        let function_value_ids: Vec<FunctionValueId> =
+            call_ids.iter().map(|call_id| result[call_id].0).collect();
+
+        let cache_key = (function.get_instructions(), function_value_ids);
+
+        let entry = self.cache.get(&cache_key);
+        let to_insert = if let Some(entry) = entry {
+            *entry
+        } else {
+            // now we have the information required to compile this function
+            let function_value = function.compile(
+                self.current_function_value_id,
+                codegen,
+                memory_size,
+                &FunctionValueCache::convert_dependencies(&result),
+            );
+            let entry = (self.current_function_value_id, function_value);
+            self.cache.insert(cache_key, entry);
+            entry
+        };
+        result.insert(call_id, to_insert);
         self.current_function_value_id += 1;
         result
     }
