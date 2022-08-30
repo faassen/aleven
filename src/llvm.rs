@@ -6,6 +6,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::{Linkage, Module};
+use inkwell::targets::{Target, TargetTriple};
 use inkwell::types::FunctionType;
 use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
@@ -54,9 +55,22 @@ type StoreValue<'ctx> = fn(&Builder<'ctx>, &Context, PointerValue<'ctx>, IntValu
 impl<'ctx> CodeGen<'ctx> {
     pub fn new(context: &'ctx Context) -> CodeGen<'ctx> {
         let module = context.create_module("program");
+
         let execution_engine = module
             .create_jit_execution_engine(OptimizationLevel::Default)
             .expect("Execution engine couldn't be built");
+
+        // set data layout for performance reasons
+        // https://llvm.org/docs/Frontend/PerformanceTips.html#the-basics
+        let target_data = execution_engine.get_target_data();
+        let data_layout = target_data.get_data_layout();
+        module.set_data_layout(&data_layout);
+
+        // set triple for performance reasons
+        Target::initialize_x86(&Default::default());
+        let triple = TargetTriple::create("x86_64-pc-linux-gnu");
+        module.set_triple(&triple);
+
         CodeGen {
             context,
             module,
