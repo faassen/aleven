@@ -42,11 +42,14 @@ impl Program {
 
     pub fn compile<'ctx>(
         &'ctx self,
+        program_id: usize,
         codegen: &'ctx CodeGen,
         memory_size: u16,
         cache: &mut FunctionValueCache<'ctx>,
     ) -> JitFunction<ProgramFunc> {
         let dependency_map = cache.compile(0, &self, codegen, memory_size);
-        codegen.compile_program(&dependency_map).unwrap()
+        codegen
+            .compile_program(program_id, &dependency_map)
+            .unwrap()
     }
 }

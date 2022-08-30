@@ -81,6 +81,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub fn compile_program(
         &self,
+        program_id: usize,
         functions: &FxHashMap<u16, FunctionValue>,
     ) -> Option<JitFunction<ProgramFunc>> {
         let i8_type = self.context.i8_type();
@@ -88,10 +89,9 @@ impl<'ctx> CodeGen<'ctx> {
         let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
         let fn_type = void_type.fn_type(&[memory_ptr_type.into()], false);
 
-        let id = 0;
-        let function = self
-            .module
-            .add_function(format!("func-{}", id).as_str(), fn_type, None);
+        let function =
+            self.module
+                .add_function(format!("func-{}", program_id).as_str(), fn_type, None);
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
 

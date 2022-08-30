@@ -40,7 +40,7 @@ fn llvm_benchmark(c: &mut Criterion) {
     let mut cache = FunctionValueCache::new();
     let context = Context::create();
     let codegen = CodeGen::new(&context);
-    let f = program.compile(&codegen, memory.len() as u16, &mut cache);
+    let f = program.compile(0, &codegen, memory.len() as u16, &mut cache);
 
     c.bench_function("llvm", |b| {
         b.iter(|| Function::run(&f, black_box(&mut memory)))

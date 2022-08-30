@@ -42,8 +42,9 @@ impl Function {
         let inner_function = self.compile(0, codegen, memory_len, &FxHashMap::default());
         let mut functions = FxHashMap::default();
         functions.insert(0, inner_function);
+        // put in program id 0 as this function is only used for testing purposes
         let llvm_program = codegen
-            .compile_program(&functions)
+            .compile_program(0, &functions)
             .expect("Unable to JIT compile `program`");
         llvm_program
     }
