@@ -5,6 +5,7 @@ use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
 use inkwell::values::FunctionValue;
 use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 
 #[derive(Debug)]
 pub struct Function {
@@ -25,7 +26,7 @@ impl Function {
 
     pub fn compile<'ctx>(
         &self,
-        id: u16,
+        id: usize,
         codegen: &'ctx CodeGen,
         memory_len: u16,
         functions: &FxHashMap<u16, FunctionValue<'ctx>>,
@@ -33,7 +34,7 @@ impl Function {
         codegen.compile_function(id, &self.instructions, memory_len, functions)
     }
 
-    pub fn compile_program<'ctx>(
+    pub fn compile_as_program<'ctx>(
         &self,
         codegen: &'ctx CodeGen,
         memory_len: u16,
@@ -55,6 +56,16 @@ impl Function {
 
     pub fn get_instructions(&self) -> &[Instruction] {
         &self.instructions
+    }
+
+    pub fn get_call_ids(&self) -> FxHashSet<u16> {
+        self.instructions
+            .iter()
+            .filter_map(|instruction| match instruction {
+                Instruction::Call(call) => Some(call.identifier),
+                _ => None,
+            })
+            .collect::<FxHashSet<u16>>()
     }
 
     fn cleanup(instructions: &[Instruction]) -> Vec<Instruction> {

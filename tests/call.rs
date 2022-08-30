@@ -1,8 +1,8 @@
-use aleven::run::{run_interpreter_program, RunnerProgram};
+use aleven::run::{run_interpreter_program, run_llvm_program, RunnerProgram};
 use aleven::{CallId, Instruction, Load, Store};
 use parameterized::parameterized;
 
-#[parameterized(runner={run_interpreter_program})]
+#[parameterized(runner={run_llvm_program, run_interpreter_program})]
 fn test_call(runner: RunnerProgram) {
     let main_instructions = [
         Instruction::Lb(Load {
@@ -26,7 +26,7 @@ fn test_call(runner: RunnerProgram) {
     assert_eq!(memory[10], 11);
 }
 
-#[parameterized(runner={run_interpreter_program})]
+#[parameterized(runner={run_llvm_program, run_interpreter_program})]
 fn test_nested_call(runner: RunnerProgram) {
     let main_instructions = [
         Instruction::Lb(Load {

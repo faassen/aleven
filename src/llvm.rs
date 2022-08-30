@@ -125,7 +125,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub fn compile_function(
         &self,
-        id: u16,
+        id: usize,
         instructions: &[Instruction],
         memory_size: u16,
         functions: &FxHashMap<u16, FunctionValue>,
@@ -738,7 +738,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let function = Function::new(&instructions);
 
     println!("Compiling program");
-    let func = function.compile_program(&codegen, memory.len() as u16);
+    let func = function.compile_as_program(&codegen, memory.len() as u16);
     save_asm(&codegen.module);
 
     println!("Running program");
