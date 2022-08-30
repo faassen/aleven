@@ -742,7 +742,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     save_asm(&codegen.module);
 
     println!("Running program");
-    Function::run(func, &mut memory);
+    Function::run(&func, &mut memory);
     println!("Memory");
     println!("{:?}", memory);
 

@@ -15,3 +15,10 @@ parameterized = "1.0.0"
 rustc-hash = "1.1.0"
 strum = "0.24"
 strum_macros = "0.24"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "my_benchmark"
+harness = false

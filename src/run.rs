@@ -14,7 +14,7 @@ pub fn run_llvm_func(instructions: &[Instruction], memory: &mut [u8]) {
     let codegen = CodeGen::new(&context);
     let func = function.compile_as_program(&codegen, memory.len() as u16);
     codegen.module.verify().unwrap();
-    Function::run(func, memory);
+    Function::run(&func, memory);
 }
 
 pub fn run_interpreter_func(instructions: &[Instruction], memory: &mut [u8]) {
@@ -33,5 +33,5 @@ pub fn run_llvm_program(funcs: &[&[Instruction]], memory: &mut [u8]) {
     let mut cache = FunctionValueCache::new();
     let func = program.compile(&codegen, memory.len() as u16, &mut cache);
     codegen.module.verify().unwrap();
-    Function::run(func, memory);
+    Function::run(&func, memory);
 }

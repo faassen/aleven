@@ -48,7 +48,7 @@ impl Function {
         llvm_program
     }
 
-    pub fn run(func: JitFunction<ProgramFunc>, memory: &mut [u8]) {
+    pub fn run(func: &JitFunction<ProgramFunc>, memory: &mut [u8]) {
         unsafe {
             func.call(memory.as_mut_ptr());
         }
