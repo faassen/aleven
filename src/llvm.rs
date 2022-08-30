@@ -5,7 +5,7 @@ use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
-use inkwell::module::Module;
+use inkwell::module::{Linkage, Module};
 use inkwell::types::FunctionType;
 use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
@@ -133,7 +133,7 @@ impl<'ctx> CodeGen<'ctx> {
         let function = self.module.add_function(
             format!("inner-{}", id).as_str(),
             self.get_function_type(),
-            None,
+            Some(Linkage::LinkerPrivate),
         );
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
