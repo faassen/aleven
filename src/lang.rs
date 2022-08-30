@@ -3,52 +3,52 @@ use byteorder::{ByteOrder, LittleEndian};
 use rustc_hash::FxHashMap;
 use strum_macros::EnumDiscriminants;
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct Immediate {
     pub value: i16,
     pub rs: u8,
     pub rd: u8,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct Load {
     pub offset: u16,
     pub rs: u8,
     pub rd: u8,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct Store {
     pub offset: u16,
     pub rs: u8,
     pub rd: u8,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct Register {
     pub rs1: u8,
     pub rs2: u8,
     pub rd: u8,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct Branch {
     pub target: u8,
     pub rs1: u8,
     pub rs2: u8,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct BranchTarget {
     pub identifier: u8,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct CallId {
     pub identifier: u16,
 }
 
-#[derive(EnumDiscriminants, Debug, PartialEq, Eq, Clone)]
+#[derive(EnumDiscriminants, Debug, PartialEq, Eq, Clone, Hash)]
 #[strum_discriminants(derive(FromPrimitive, ToPrimitive))]
 #[strum_discriminants(name(Opcode))]
 pub enum Instruction {

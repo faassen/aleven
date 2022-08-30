@@ -57,44 +57,76 @@ impl Program {
 type CallId = u16;
 type FunctionValueId = usize;
 
+type CacheKey<'ctx> = (&'ctx [Instruction], Vec<FunctionValueId>);
+type CacheValue<'ctx> = (FunctionValueId, FunctionValue<'ctx>);
+
 struct KnownFunctionValues<'ctx> {
-    function_values: FxHashMap<CallId, (FunctionValueId, FunctionValue<'ctx>)>,
+    cache: FxHashMap<CacheKey<'ctx>, CacheValue<'ctx>>,
     current_function_value_id: FunctionValueId,
 }
 
 impl<'ctx> KnownFunctionValues<'ctx> {
     pub fn new() -> KnownFunctionValues<'ctx> {
         KnownFunctionValues {
-            function_values: FxHashMap::default(),
+            cache: FxHashMap::default(),
             current_function_value_id: 0,
         }
+    }
+
+    fn convert_dependencies(
+        m: &FxHashMap<CallId, (FunctionValueId, FunctionValue<'ctx>)>,
+    ) -> FxHashMap<CallId, FunctionValue<'ctx>> {
+        m.iter().map(|(k, v)| (*k, v.1)).collect()
     }
 
     fn compile(
         &mut self,
         call_id: CallId,
-        program: &Program,
+        program: &'ctx Program,
         codegen: &'ctx CodeGen,
         memory_size: u16,
     ) -> FxHashMap<CallId, FunctionValue<'ctx>> {
+        KnownFunctionValues::convert_dependencies(&self.compile_internal(
+            call_id,
+            program,
+            codegen,
+            memory_size,
+        ))
+    }
+
+    fn compile_internal(
+        &mut self,
+        call_id: CallId,
+        program: &'ctx Program,
+        codegen: &'ctx CodeGen,
+        memory_size: u16,
+    ) -> FxHashMap<CallId, (FunctionValueId, FunctionValue<'ctx>)> {
         // given everything this function calls, compile dependencies
         let function = &program.functions[call_id as usize];
         let call_ids = function.get_call_ids();
 
         let mut result = FxHashMap::default();
         for dependency_call_id in call_ids {
-            let dependency_map = self.compile(dependency_call_id, program, codegen, memory_size);
+            let dependency_map =
+                self.compile_internal(dependency_call_id, program, codegen, memory_size);
             result.extend(dependency_map);
         }
+
         // now we have the information required to compile this function
         let function_value = function.compile(
             self.current_function_value_id,
             codegen,
             memory_size,
-            &result,
+            &KnownFunctionValues::convert_dependencies(&result),
         );
+        // XXX calculate dependency array from CallId to FunctionValueId
+        let function_value_ids = Vec::new();
+        self.cache.insert(
+            (function.get_instructions(), function_value_ids),
+            (self.current_function_value_id, function_value),
+        );
+        result.insert(call_id, (self.current_function_value_id, function_value));
         self.current_function_value_id += 1;
-        result.insert(call_id, function_value);
         result
     }
 
