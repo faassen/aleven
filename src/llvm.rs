@@ -1,6 +1,8 @@
+use crate::cache::FunctionValueCache;
 use crate::function::Function;
 use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 use crate::llvmasm::save_asm;
+use crate::program::Program;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -735,24 +737,76 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let mut memory = [0u8; 64];
     memory[0] = 11;
 
-    use Instruction::*;
-    let instructions = [
-        Target(BranchTarget { identifier: 176 }),
-        Lb(Load {
+    let main_instructions = vec![
+        Instruction::Lb(Load {
             offset: 0,
-            rs: 1,
+            rs: 31,
             rd: 1,
         }),
-        Sb(Store {
-            offset: 10,
-            rs: 1,
+        Instruction::Lb(Load {
+            offset: 1,
+            rs: 31,
             rd: 2,
         }),
+        Instruction::Lb(Load {
+            offset: 2,
+            rs: 31,
+            rd: 3,
+        }),
+        Instruction::Lb(Load {
+            offset: 3,
+            rs: 31,
+            rd: 4,
+        }),
+        Instruction::Call(CallId { identifier: 1 }),
+        Instruction::Sb(Store {
+            offset: 13,
+            rs: 4,
+            rd: 31,
+        }),
     ];
-    let function = Function::new(&instructions);
 
+    let sub_instructions = vec![
+        Instruction::Sb(Store {
+            offset: 10,
+            rs: 1,
+            rd: 31,
+        }),
+        Instruction::Call(CallId { identifier: 2 }),
+        Instruction::Sb(Store {
+            offset: 12,
+            rs: 3,
+            rd: 31,
+        }),
+    ];
+
+    let sub_sub_instructions = vec![Instruction::Sb(Store {
+        offset: 11,
+        rs: 2,
+        rd: 31,
+    })];
+    // let instructions = [
+    //     Target(BranchTarget { identifier: 176 }),
+    //     Lb(Load {
+    //         offset: 0,
+    //         rs: 1,
+    //         rd: 1,
+    //     }),
+    //     Sb(Store {
+    //         offset: 10,
+    //         rs: 1,
+    //         rd: 2,
+    //     }),
+    // ];
+
+    let program = Program::new(&[&main_instructions, &sub_instructions, &sub_sub_instructions]);
+    let context = Context::create();
+    let codegen = CodeGen::new(&context);
+    let mut cache = FunctionValueCache::new();
     println!("Compiling program");
-    let func = function.compile_as_program(&codegen, memory.len() as u16);
+    let func = program.compile(0, &codegen, memory.len() as u16, &mut cache);
+    codegen.module.verify().unwrap();
+
     save_asm(&codegen.module);
 
     println!("Running program");
