@@ -64,6 +64,7 @@ impl<'ctx> FunctionValueCache<'ctx> {
 
         let entry = self.cache.get(&cache_key);
         let to_insert = if let Some(entry) = entry {
+            // nice, a cache hit
             *entry
         } else {
             // now we have the information required to compile this function
