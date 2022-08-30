@@ -8,7 +8,8 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::{Linkage, Module};
-use inkwell::targets::{Target, TargetTriple};
+use inkwell::passes::{PassManager, PassManagerBuilder};
+use inkwell::targets::{Target, TargetMachine, TargetTriple};
 use inkwell::types::FunctionType;
 use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
@@ -69,8 +70,7 @@ impl<'ctx> CodeGen<'ctx> {
         module.set_data_layout(&data_layout);
 
         // set triple for performance reasons
-        Target::initialize_x86(&Default::default());
-        let triple = TargetTriple::create("x86_64-pc-linux-gnu");
+        let triple = TargetMachine::get_default_triple();
         module.set_triple(&triple);
 
         CodeGen {
@@ -91,9 +91,8 @@ impl<'ctx> CodeGen<'ctx> {
         let memory_ptr_type = i8_type.ptr_type(AddressSpace::Generic);
         let fn_type = void_type.fn_type(&[memory_ptr_type.into()], false);
 
-        let function =
-            self.module
-                .add_function(format!("func-{}", program_id).as_str(), fn_type, None);
+        let function_name = format!("func-{}", program_id);
+        let function = self.module.add_function(&function_name, fn_type, None);
         let basic_block = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(basic_block);
 
@@ -125,7 +124,25 @@ impl<'ctx> CodeGen<'ctx> {
         );
         self.builder.build_return(None);
 
+        // let pass_manager_builder = PassManagerBuilder::create();
+        // pass_manager_builder.set_optimization_level(OptimizationLevel::Aggressive);
+        // let fpm = PassManager::create(&self.module);
+        // pass_manager_builder.populate_function_pass_manager(&fpm);
+
+        // let mut curr_function = self.module.get_first_function();
+        // while let Some(func_value) = curr_function {
+        //     let fpm_result = fpm.run_on(&func_value);
+        //     println!("fpm did something: {:?}", fpm_result);
+        //     curr_function = func_value.get_next_function();
+        // }
+
+        // let fpm_result = fpm.run_on(self.module);
+
         // self.module.print_to_stderr();
+
+        // it claims it does something but on the other hand the assembly output is
+        // the same?
+
         // save_asm(&self.module);
 
         unsafe { self.execution_engine.get_function("func-0").ok() }
