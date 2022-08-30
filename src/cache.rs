@@ -80,3 +80,9 @@ impl<'ctx> FunctionValueCache<'ctx> {
         m.iter().map(|(k, v)| (*k, v.1)).collect()
     }
 }
+
+impl<'ctx> Default for FunctionValueCache<'ctx> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
