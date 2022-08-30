@@ -3,6 +3,7 @@ extern crate num;
 extern crate num_derive;
 
 pub mod assemble;
+pub mod cache;
 pub mod function;
 pub mod lang;
 pub mod llvm;

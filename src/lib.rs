@@ -3,6 +3,7 @@ extern crate num;
 extern crate num_derive;
 
 mod assemble;
+mod cache;
 mod function;
 mod lang;
 mod llvm;
@@ -11,6 +12,7 @@ mod program;
 pub mod run;
 
 pub use assemble::Assembler;
+pub use cache::FunctionValueCache;
 pub use function::Function;
 pub use lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 pub use llvm::CodeGen;

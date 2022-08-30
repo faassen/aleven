@@ -1,3 +1,4 @@
+use crate::cache::FunctionValueCache;
 use crate::function::Function;
 use crate::lang::Instruction;
 use crate::llvm::CodeGen;
@@ -29,7 +30,8 @@ pub fn run_llvm_program(funcs: &[&[Instruction]], memory: &mut [u8]) {
     let program = Program::new(funcs);
     let context = Context::create();
     let codegen = CodeGen::new(&context);
-    let func = program.compile(&codegen, memory.len() as u16);
+    let mut cache = FunctionValueCache::new();
+    let func = program.compile(&codegen, memory.len() as u16, &mut cache);
     codegen.module.verify().unwrap();
     Function::run(func, memory);
 }
