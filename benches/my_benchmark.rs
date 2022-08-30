@@ -42,7 +42,7 @@ fn llvm_benchmark(c: &mut Criterion) {
     let codegen = CodeGen::new(&context);
     let f = program.compile(&codegen, memory.len() as u16, &mut cache);
 
-    c.bench_function("interpreter", |b| {
+    c.bench_function("llvm", |b| {
         b.iter(|| Function::run(&f, black_box(&mut memory)))
     });
 }
