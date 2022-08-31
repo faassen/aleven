@@ -2,8 +2,9 @@ use crate::lang::Opcode;
 use crate::lang::{Instruction, Register};
 use nom::bytes::complete::{tag, take, take_while, take_while_m_n};
 use nom::character::complete::{space0, space1, u8};
-use nom::combinator::{flat_map, map_opt, map_res};
+use nom::combinator::{flat_map, map, map_opt, map_res};
 use nom::number::complete::be_u16;
+use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 use rustc_hash::FxHashMap;
 use strum::IntoEnumIterator;
@@ -29,49 +30,33 @@ impl Opcodes {
     }
 }
 
-fn register_nr(input: &str) -> IResult<&str, u8> {
-    u8(input)
-}
-
 fn register(input: &str) -> IResult<&str, u8> {
-    let (input, _) = tag("r")(input)?;
-    register_nr(input)
+    preceded(tag("r"), u8)(input)
 }
 
-fn opcode<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, &'a Opcode> {
-    map_opt(take_while(|c: char| c.is_alphanumeric()), |s| {
-        opcodes.get(s)
-    })(input)
-}
-
-fn assign(input: &str) -> IResult<&str, ()> {
-    let (input, _) = space0(input)?;
-    let (input, _) = tag("=")(input)?;
-    let (input, _) = space0(input)?;
-    Ok((input, ()))
-}
-
-fn register_assign(input: &str) -> IResult<&str, u8> {
-    let (input, register) = register(input)?;
-    let (input, _) = assign(input)?;
-    Ok((input, register))
+fn opcode<'a>(opcodes: &'a Opcodes) -> impl Fn(&'a str) -> IResult<&'a str, &Opcode> {
+    move |input: &'a str| {
+        map_opt(take_while(|c: char| c.is_alphanumeric()), |s| {
+            opcodes.get(s)
+        })(input)
+    }
 }
 
 fn opcode_register<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, (Opcode, u8, u8, u8)> {
-    let (input, rd) = register(input)?;
-    let (input, _) = space0(input)?;
-    let (input, _) = tag("=")(input)?;
-    let (input, _) = space0(input)?;
-    let (input, opcode) = opcode(input, opcodes)?;
-    let (input, _) = space1(input)?;
-    let (input, rs1) = register(input)?;
-    let (input, _) = space1(input)?;
-    let (input, rs2) = register(input)?;
-    Ok((input, (*opcode, rd, rs1, rs2)))
+) -> IResult<&'a str, (u8, (&'a Opcode, u8, u8))> {
+    separated_pair(
+        register,
+        delimited(space0, tag("="), space0),
+        tuple((
+            opcode(opcodes),
+            preceded(space1, register),
+            preceded(space1, register),
+        )),
+    )(input)
 }
+
 // r1 = addi 15 r0
 // r2 = add r3 r4
 // r1 = lb 10 r0
@@ -105,21 +90,7 @@ mod tests {
     #[test]
     fn test_opcode() {
         let opcodes = Opcodes::new();
-
-        assert_eq!(opcode("addi", &opcodes), Ok(("", &Opcode::Addi)));
-    }
-
-    #[test]
-    fn test_assign() {
-        assert_eq!(assign("=whatever"), Ok(("whatever", ())));
-        assert_eq!(assign(" =whatever"), Ok(("whatever", ())));
-        assert_eq!(assign(" = whatever"), Ok(("whatever", ())));
-    }
-
-    #[test]
-    fn test_register_assign() {
-        assert_eq!(register_assign("r1 = whatever"), Ok(("whatever", 1)));
-        assert_eq!(register_assign("r10 = whatever"), Ok(("whatever", 10)));
+        assert_eq!(opcode(&opcodes)("addi"), Ok(("", &Opcode::Addi)));
     }
 
     #[test]
@@ -127,7 +98,7 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_register("r1 = add r2 r3", &opcodes),
-            Ok(("", (Opcode::Add, 1, 2, 3)))
+            Ok(("", (1, (&Opcode::Add, 2, 3))))
         );
     }
 }
