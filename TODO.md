@@ -1,9 +1,9 @@
 - More comparison operations
 
-- Fuzz testing
-
 - If multiple branch targets have the same identifier, want to resolve this
   properly.
+
+- experiment more with passes, needs longer program
 
 - Cache
 

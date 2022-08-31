@@ -93,3 +93,19 @@ fn test_nested_call(runner: RunnerProgram) {
     assert_eq!(memory[12], 13);
     assert_eq!(memory[13], 14);
 }
+
+#[parameterized(runner={run_interpreter_program})]
+fn test_no_recursion_basic(runner: RunnerProgram) {
+    let main_instructions = [Instruction::Call(CallId { identifier: 0 })];
+
+    let mut memory = [0u8; 64];
+    runner(&[&main_instructions], &mut memory);
+}
+
+#[parameterized(runner={run_interpreter_program})]
+fn test_no_calls_into_unknown(runner: RunnerProgram) {
+    let main_instructions = [Instruction::Call(CallId { identifier: 1 })];
+
+    let mut memory = [0u8; 64];
+    runner(&[&main_instructions], &mut memory);
+}

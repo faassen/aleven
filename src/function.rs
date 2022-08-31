@@ -7,7 +7,7 @@ use inkwell::values::FunctionValue;
 use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Function {
     instructions: Vec<Instruction>,
 }
@@ -92,6 +92,27 @@ impl Function {
             }
         }
         result
+    }
+
+    pub fn cleanup_calls(&self, functions: &[Function], seen: &FxHashSet<u16>) -> Function {
+        let mut new_instructions = Vec::new();
+        for instruction in self.instructions.iter() {
+            match instruction {
+                Instruction::Call(call) => {
+                    if !seen.contains(&call.identifier) {
+                        let identifier = call.identifier as usize;
+                        if identifier >= functions.len() {
+                            continue;
+                        }
+                        new_instructions.push(instruction.clone());
+                    }
+                }
+                _ => {
+                    new_instructions.push(instruction.clone());
+                }
+            }
+        }
+        Function::new(&new_instructions)
     }
 
     fn targets(instructions: &[Instruction]) -> FxHashMap<u8, usize> {
