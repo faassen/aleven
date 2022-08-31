@@ -5,6 +5,16 @@ use byteorder::{ByteOrder, LittleEndian};
 
 pub struct Assembler {}
 
+pub enum OpcodeType {
+    Register,
+    Immediate,
+    Load,
+    Store,
+    Branch,
+    BranchTarget,
+    Call,
+}
+
 trait ValueAssembler {
     fn assemble(&self, output: &mut Vec<u8>);
 }
@@ -87,18 +97,31 @@ impl Opcode {
         num::FromPrimitive::from_u8(value)
     }
 
-    fn size(&self) -> usize {
+    pub fn opcode_type(&self) -> OpcodeType {
         use Opcode::*;
         match self {
-            Addi | Slti | Sltiu | Andi | Ori | Xori | Slli | Srli | Srai => Immediate::size(),
-            Add | Sub | Slt | Sltu | And | Or | Xor | Sll | Srl | Sra => Register::size(),
-            Lh | Lbu | Lb => Load::size(),
-            Sh | Sb => Store::size(),
-            Beq => Branch::size(),
-            Target => BranchTarget::size(),
-            Call => CallId::size(),
+            Addi | Slti | Sltiu | Andi | Ori | Xori | Slli | Srli | Srai => OpcodeType::Immediate,
+            Add | Sub | Slt | Sltu | And | Or | Xor | Sll | Srl | Sra => OpcodeType::Register,
+            Lh | Lbu | Lb => OpcodeType::Load,
+            Sh | Sb => OpcodeType::Store,
+            Beq => OpcodeType::Branch,
+            Target => OpcodeType::BranchTarget,
+            Call => OpcodeType::Call,
         }
     }
+
+    fn size(&self) -> usize {
+        match self.opcode_type() {
+            OpcodeType::Immediate => Immediate::size(),
+            OpcodeType::Register => Register::size(),
+            OpcodeType::Load => Load::size(),
+            OpcodeType::Store => Store::size(),
+            OpcodeType::Branch => Branch::size(),
+            OpcodeType::BranchTarget => BranchTarget::size(),
+            OpcodeType::Call => CallId::size(),
+        }
+    }
+
     fn disassemble(&self, values: &[u8]) -> Instruction {
         use Opcode::*;
         match self {

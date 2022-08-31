@@ -1,3 +1,4 @@
+use crate::assemble::OpcodeType;
 use crate::lang::Opcode;
 use crate::lang::{Instruction, Register};
 use nom::bytes::complete::{tag, take, take_while, take_while_m_n};
@@ -42,7 +43,7 @@ fn opcode<'a>(opcodes: &'a Opcodes) -> impl Fn(&'a str) -> IResult<&'a str, &Opc
     }
 }
 
-fn opcode_register<'a>(
+fn instruction_register<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
 ) -> IResult<&'a str, (u8, (&'a Opcode, u8, u8))> {
@@ -94,10 +95,10 @@ mod tests {
     }
 
     #[test]
-    fn test_opcode_register() {
+    fn test_instruction_register() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            opcode_register("r1 = add r2 r3", &opcodes),
+            instruction_register("r1 = add r2 r3", &opcodes),
             Ok(("", (1, (&Opcode::Add, 2, 3))))
         );
     }
