@@ -1,7 +1,7 @@
 use crate::function::Function;
 use byteorder::{ByteOrder, LittleEndian};
 use rustc_hash::FxHashMap;
-use strum_macros::EnumDiscriminants;
+use strum_macros::{Display, EnumDiscriminants, EnumIter};
 
 #[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct Immediate {
@@ -49,7 +49,7 @@ pub struct CallId {
 }
 
 #[derive(EnumDiscriminants, Debug, PartialEq, Eq, Clone, Hash)]
-#[strum_discriminants(derive(FromPrimitive, ToPrimitive))]
+#[strum_discriminants(derive(FromPrimitive, ToPrimitive, EnumIter, Display))]
 #[strum_discriminants(name(Opcode))]
 pub enum Instruction {
     Addi(Immediate),

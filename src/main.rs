@@ -8,6 +8,7 @@ pub mod function;
 pub mod lang;
 pub mod llvm;
 pub mod llvmasm;
+pub mod parser;
 pub mod program;
 pub mod run;
 

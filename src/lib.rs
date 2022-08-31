@@ -8,6 +8,7 @@ mod function;
 mod lang;
 mod llvm;
 mod llvmasm;
+mod parser;
 mod program;
 pub mod run;
 
