@@ -114,6 +114,36 @@ fn instruction_store<'a>(
         register,
     )(input)
 }
+
+fn instruction_branch<'a>(
+    input: &'a str,
+    opcodes: &'a Opcodes,
+) -> IResult<&'a str, (&'a Opcode, u8, u8, u8)> {
+    tuple((
+        opcode(opcodes, OpcodeType::Branch),
+        preceded(space1, register),
+        preceded(space1, register),
+        preceded(space1, u8),
+    ))(input)
+}
+
+fn instruction_target<'a>(
+    input: &'a str,
+    opcodes: &'a Opcodes,
+) -> IResult<&'a str, (&'a Opcode, u8)> {
+    tuple((
+        opcode(opcodes, OpcodeType::BranchTarget),
+        preceded(space1, u8),
+    ))(input)
+}
+
+fn instruction_call<'a>(
+    input: &'a str,
+    opcodes: &'a Opcodes,
+) -> IResult<&'a str, (&'a Opcode, u16)> {
+    tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)
+}
+
 // r1 = addi r0 15
 // r2 = add r3 r4
 // r1 = lb r0 10
@@ -193,5 +223,32 @@ mod tests {
             instruction_store("sb r2 5 = r1", &opcodes),
             Ok(("", ((&Opcode::Sb, 2, 5), 1)))
         );
+    }
+
+    #[test]
+    fn test_instruction_branch() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instruction_branch("beq r1 r2 10", &opcodes),
+            Ok(("", (&Opcode::Beq, 1, 2, 10)))
+        )
+    }
+
+    #[test]
+    fn test_instruction_target() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instruction_target("target 10", &opcodes),
+            Ok(("", (&Opcode::Target, 10)))
+        )
+    }
+
+    #[test]
+    fn test_instruction_call() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instruction_call("call 10", &opcodes),
+            Ok(("", (&Opcode::Call, 10)))
+        )
     }
 }
