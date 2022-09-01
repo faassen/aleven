@@ -5,6 +5,7 @@ use byteorder::{ByteOrder, LittleEndian};
 
 pub struct Assembler {}
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum OpcodeType {
     Register,
     Immediate,

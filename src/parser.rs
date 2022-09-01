@@ -35,10 +35,22 @@ fn register(input: &str) -> IResult<&str, u8> {
     preceded(tag("r"), u8)(input)
 }
 
-fn opcode<'a>(opcodes: &'a Opcodes) -> impl Fn(&'a str) -> IResult<&'a str, &Opcode> {
+fn opcode<'a>(
+    opcodes: &'a Opcodes,
+    opcode_type: OpcodeType,
+) -> impl Fn(&'a str) -> IResult<&'a str, &Opcode> {
     move |input: &'a str| {
         map_opt(take_while(|c: char| c.is_alphanumeric()), |s| {
-            opcodes.get(s)
+            let opcode = opcodes.get(s);
+            if let Some(opcode) = opcode {
+                if opcode.opcode_type() == opcode_type {
+                    Some(opcode)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         })(input)
     }
 }
@@ -51,7 +63,7 @@ fn instruction_register<'a>(
         register,
         delimited(space0, tag("="), space0),
         tuple((
-            opcode(opcodes),
+            opcode(opcodes, OpcodeType::Register),
             preceded(space1, register),
             preceded(space1, register),
         )),
@@ -91,7 +103,12 @@ mod tests {
     #[test]
     fn test_opcode() {
         let opcodes = Opcodes::new();
-        assert_eq!(opcode(&opcodes)("addi"), Ok(("", &Opcode::Addi)));
+        assert_eq!(
+            opcode(&opcodes, OpcodeType::Immediate)("addi"),
+            Ok(("", &Opcode::Addi))
+        );
+
+        assert_error!(opcode(&opcodes, OpcodeType::Register)("addi"));
     }
 
     #[test]
