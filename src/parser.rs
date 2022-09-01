@@ -1,10 +1,12 @@
 use crate::lang::Opcode;
 use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 use crate::opcodetype::OpcodeType;
-use nom::bytes::complete::{tag, take_while};
+use nom::bytes::complete::{is_not, tag, take_until, take_while};
+use nom::character::complete::char;
 use nom::character::complete::{i16, line_ending, newline, space0, space1, u16, u8};
-use nom::combinator::{eof, map_opt};
-use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
+use nom::combinator::{eof, map_opt, opt, value};
+use nom::multi::many_till;
+use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 use rustc_hash::FxHashMap;
 use std::convert::Into;
@@ -155,17 +157,27 @@ fn instruction_call<'a>(opcodes: &'a Opcodes) -> impl Fn(&'a str) -> IResult<&'a
     }
 }
 
-fn end_of_line(input: &str) -> IResult<&str, &str> {
+fn end_of_line(input: &str) -> IResult<&str, ()> {
     if input.is_empty() {
-        Ok((input, input))
+        Ok((input, ()))
     } else {
-        line_ending(input)
+        let (input, _) = line_ending(input)?;
+        Ok((input, ()))
     }
 }
 
-fn instructions<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Vec<Instruction>> {
-    let (input, instructions) = nom::multi::many0(terminated(
-        nom::branch::alt((
+fn peol_comment<'a>(i: &'a str) -> IResult<&'a str, ()> {
+    value(
+        (), // Output is thrown away.
+        pair(char('#'), is_not("\n\r")),
+    )(i)
+}
+
+fn instruction_with_optional_comment<'a>(
+    opcodes: &'a Opcodes,
+) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, instruction) = nom::branch::alt((
             instruction_immediate(opcodes),
             instruction_register(opcodes),
             instruction_load(opcodes),
@@ -173,7 +185,15 @@ fn instructions<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Ve
             instruction_branch(opcodes),
             instruction_target(opcodes),
             instruction_call(opcodes),
-        )),
+        ))(input)?;
+        let (input, _) = opt(preceded(space0, peol_comment))(input)?;
+        Ok((input, instruction))
+    }
+}
+
+fn instructions<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Vec<Instruction>> {
+    let (input, instructions) = nom::multi::many0(terminated(
+        instruction_with_optional_comment(opcodes),
         end_of_line,
     ))(input)?;
     Ok((input, instructions))
@@ -322,6 +342,25 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             instructions("call 10\nr1 = add r2 r3", &opcodes),
+            Ok((
+                "",
+                vec![
+                    Instruction::Call(CallId { identifier: 10 }),
+                    Instruction::Add(Register {
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 3
+                    })
+                ]
+            ))
+        )
+    }
+
+    #[test]
+    fn test_instructions_with_comment() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instructions("call 10 # foo\nr1 = add r2 r3 # bar", &opcodes),
             Ok((
                 "",
                 vec![
