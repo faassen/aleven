@@ -2,9 +2,9 @@ use crate::lang::Opcode;
 use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 use crate::opcodetype::OpcodeType;
 use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{i16, space0, space1, u16, u8};
-use nom::combinator::map_opt;
-use nom::sequence::{delimited, preceded, separated_pair, tuple};
+use nom::character::complete::{i16, line_ending, newline, space0, space1, u16, u8};
+use nom::combinator::{eof, map_opt};
+use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 use rustc_hash::FxHashMap;
 use std::convert::Into;
@@ -56,95 +56,128 @@ fn opcode<'a>(
     }
 }
 fn instruction_immediate<'a>(
-    input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, Instruction> {
-    let (input, (rd, (opcode, rs, value))) = separated_pair(
-        register,
-        delimited(space0, tag("="), space0),
-        tuple((
-            opcode(opcodes, OpcodeType::Immediate),
-            preceded(space1, register),
-            preceded(space1, i16),
-        )),
-    )(input)?;
-    Ok((input, (opcode, Immediate { rd, rs, value }).into()))
+) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, (rd, (opcode, rs, value))) = separated_pair(
+            register,
+            delimited(space0, tag("="), space0),
+            tuple((
+                opcode(opcodes, OpcodeType::Immediate),
+                preceded(space1, register),
+                preceded(space1, i16),
+            )),
+        )(input)?;
+        Ok((input, (opcode, Immediate { rd, rs, value }).into()))
+    }
 }
 
-fn instruction_register<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
-    let (input, (rd, (opcode, rs1, rs2))) = separated_pair(
-        register,
-        delimited(space0, tag("="), space0),
-        tuple((
-            opcode(opcodes, OpcodeType::Register),
-            preceded(space1, register),
-            preceded(space1, register),
-        )),
-    )(input)?;
-    Ok((input, (opcode, Register { rd, rs1, rs2 }).into()))
+fn instruction_register<'a>(
+    opcodes: &'a Opcodes,
+) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, (rd, (opcode, rs1, rs2))) = separated_pair(
+            register,
+            delimited(space0, tag("="), space0),
+            tuple((
+                opcode(opcodes, OpcodeType::Register),
+                preceded(space1, register),
+                preceded(space1, register),
+            )),
+        )(input)?;
+        Ok((input, (opcode, Register { rd, rs1, rs2 }).into()))
+    }
 }
 
-fn instruction_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
-    let (input, (rd, (opcode, rs, offset))) = separated_pair(
-        register,
-        delimited(space0, tag("="), space0),
-        tuple((
-            opcode(opcodes, OpcodeType::Load),
-            preceded(space1, register),
-            preceded(space1, u16),
-        )),
-    )(input)?;
-    Ok((input, (opcode, Load { rd, rs, offset }).into()))
+fn instruction_load<'a>(opcodes: &'a Opcodes) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, (rd, (opcode, rs, offset))) = separated_pair(
+            register,
+            delimited(space0, tag("="), space0),
+            tuple((
+                opcode(opcodes, OpcodeType::Load),
+                preceded(space1, register),
+                preceded(space1, u16),
+            )),
+        )(input)?;
+        Ok((input, (opcode, Load { rd, rs, offset }).into()))
+    }
 }
 
-fn instruction_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
-    let (input, ((opcode, rd, offset), rs)) = separated_pair(
-        tuple((
-            opcode(opcodes, OpcodeType::Store),
-            preceded(space1, register),
-            preceded(space1, u16),
-        )),
-        delimited(space0, tag("="), space0),
-        register,
-    )(input)?;
-    Ok((input, (opcode, Store { rd, rs, offset }).into()))
+fn instruction_store<'a>(
+    opcodes: &'a Opcodes,
+) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, ((opcode, rd, offset), rs)) = separated_pair(
+            tuple((
+                opcode(opcodes, OpcodeType::Store),
+                preceded(space1, register),
+                preceded(space1, u16),
+            )),
+            delimited(space0, tag("="), space0),
+            register,
+        )(input)?;
+        Ok((input, (opcode, Store { rd, rs, offset }).into()))
+    }
 }
 
-fn instruction_branch<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
-    let (input, (opcode, rs1, rs2, target)) = tuple((
-        opcode(opcodes, OpcodeType::Branch),
-        preceded(space1, register),
-        preceded(space1, register),
-        preceded(space1, u8),
+fn instruction_branch<'a>(
+    opcodes: &'a Opcodes,
+) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, (opcode, rs1, rs2, target)) = tuple((
+            opcode(opcodes, OpcodeType::Branch),
+            preceded(space1, register),
+            preceded(space1, register),
+            preceded(space1, u8),
+        ))(input)?;
+        Ok((input, (opcode, Branch { rs1, rs2, target }).into()))
+    }
+}
+
+fn instruction_target<'a>(
+    opcodes: &'a Opcodes,
+) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, (opcode, identifier)) = tuple((
+            opcode(opcodes, OpcodeType::BranchTarget),
+            preceded(space1, u8),
+        ))(input)?;
+        Ok((input, (opcode, BranchTarget { identifier }).into()))
+    }
+}
+
+fn instruction_call<'a>(opcodes: &'a Opcodes) -> impl Fn(&'a str) -> IResult<&'a str, Instruction> {
+    move |input: &'a str| {
+        let (input, (opcode, identifier)) =
+            tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)?;
+        Ok((input, (opcode, CallId { identifier }).into()))
+    }
+}
+
+fn end_of_line(input: &str) -> IResult<&str, &str> {
+    if input.is_empty() {
+        Ok((input, input))
+    } else {
+        line_ending(input)
+    }
+}
+
+fn instructions<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Vec<Instruction>> {
+    let (input, instructions) = nom::multi::many0(terminated(
+        nom::branch::alt((
+            instruction_immediate(opcodes),
+            instruction_register(opcodes),
+            instruction_load(opcodes),
+            instruction_store(opcodes),
+            instruction_branch(opcodes),
+            instruction_target(opcodes),
+            instruction_call(opcodes),
+        )),
+        end_of_line,
     ))(input)?;
-    Ok((input, (opcode, Branch { rs1, rs2, target }).into()))
+    Ok((input, instructions))
 }
-
-fn instruction_target<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
-    let (input, (opcode, identifier)) = tuple((
-        opcode(opcodes, OpcodeType::BranchTarget),
-        preceded(space1, u8),
-    ))(input)?;
-    Ok((input, (opcode, BranchTarget { identifier }).into()))
-}
-
-fn instruction_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
-    let (input, (opcode, identifier)) =
-        tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)?;
-    Ok((input, (opcode, CallId { identifier }).into()))
-}
-
-// r1 = addi r0 15
-// r2 = add r3 r4
-// r1 = lb r0 10
-// sb r0 10 = r1
-// beq r1 r2 2
-// target 2
-// call 14
-
-// register one is relatively easy to parse
-
-// R = opcode R R
 
 #[cfg(test)]
 mod tests {
@@ -179,7 +212,7 @@ mod tests {
     fn test_instruction_register() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_register("r1 = add r2 r3", &opcodes),
+            instruction_register(&opcodes)("r1 = add r2 r3"),
             Ok((
                 "",
                 Instruction::Add(Register {
@@ -195,7 +228,7 @@ mod tests {
     fn test_instruction_immediate() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_immediate("r1 = addi r2 5", &opcodes),
+            instruction_immediate(&opcodes)("r1 = addi r2 5"),
             Ok((
                 "",
                 Instruction::Addi(Immediate {
@@ -206,7 +239,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            instruction_immediate("r1 = addi r2 -5", &opcodes),
+            instruction_immediate(&opcodes)("r1 = addi r2 -5"),
             Ok((
                 "",
                 Instruction::Addi(Immediate {
@@ -222,7 +255,7 @@ mod tests {
     fn test_instruction_load() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_load("r1 = lb r2 5", &opcodes),
+            instruction_load(&opcodes)("r1 = lb r2 5"),
             Ok((
                 "",
                 Instruction::Lb(Load {
@@ -238,7 +271,7 @@ mod tests {
     fn test_instruction_store() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_store("sb r2 5 = r1", &opcodes),
+            instruction_store(&opcodes)("sb r2 5 = r1"),
             Ok((
                 "",
                 Instruction::Sb(Store {
@@ -254,7 +287,7 @@ mod tests {
     fn test_instruction_branch() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_branch("beq r1 r2 10", &opcodes),
+            instruction_branch(&opcodes)("beq r1 r2 10"),
             Ok((
                 "",
                 Instruction::Beq(Branch {
@@ -263,24 +296,43 @@ mod tests {
                     target: 10
                 })
             ))
-        )
+        );
     }
 
     #[test]
     fn test_instruction_target() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_target("target 10", &opcodes),
+            instruction_target(&opcodes)("target 10"),
             Ok(("", Instruction::Target(BranchTarget { identifier: 10 })))
-        )
+        );
     }
 
     #[test]
     fn test_instruction_call() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_call("call 10", &opcodes),
+            instruction_call(&opcodes)("call 10"),
             Ok(("", Instruction::Call(CallId { identifier: 10 })))
+        );
+    }
+
+    #[test]
+    fn test_instructions() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instructions("call 10\nr1 = add r2 r3", &opcodes),
+            Ok((
+                "",
+                vec![
+                    Instruction::Call(CallId { identifier: 10 }),
+                    Instruction::Add(Register {
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 3
+                    })
+                ]
+            ))
         )
     }
 }
