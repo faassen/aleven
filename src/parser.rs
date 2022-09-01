@@ -166,12 +166,22 @@ fn end_of_line(input: &str) -> IResult<&str, ()> {
     }
 }
 
-fn peol_comment(i: &str) -> IResult<&str, ()> {
+fn peol_comment(input: &str) -> IResult<&str, ()> {
     value(
         (), // Output is thrown away.
         pair(char('#'), is_not("\n\r")),
-    )(i)
+    )(input)
 }
+
+// fn whitespace(input: &str) -> IResult<&str, ()> {
+//     let (input, _) = multispace0(input)?;
+//     Ok((input, ()))
+// }
+
+// fn whitespace_or_comment(input: &str) -> IResult<&str, ()> {
+//     let (input, _) = nom::multi::many0(nom::branch::alt((whitespace, peol_comment)))(input)?;
+//     Ok((input, ()))
+// }
 
 fn instruction_with_optional_comment<'a>(
     opcodes: &'a Opcodes,
