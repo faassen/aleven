@@ -55,7 +55,7 @@ fn opcode<'a>(
         })(input)
     }
 }
-fn instruction_immediate<'a>(
+fn opcode_immediate<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
 ) -> IResult<&'a str, (u8, (&'a Opcode, u8, i16))> {
@@ -70,7 +70,7 @@ fn instruction_immediate<'a>(
     )(input)
 }
 
-fn instruction_register<'a>(
+fn opcode_register<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
 ) -> IResult<&'a str, (u8, (&'a Opcode, u8, u8))> {
@@ -85,7 +85,7 @@ fn instruction_register<'a>(
     )(input)
 }
 
-fn instruction_load<'a>(
+fn opcode_load<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
 ) -> IResult<&'a str, (u8, (&'a Opcode, u8, u16))> {
@@ -100,7 +100,7 @@ fn instruction_load<'a>(
     )(input)
 }
 
-fn instruction_store<'a>(
+fn opcode_store<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
 ) -> IResult<&'a str, ((&'a Opcode, u8, u16), u8)> {
@@ -115,7 +115,7 @@ fn instruction_store<'a>(
     )(input)
 }
 
-fn instruction_branch<'a>(
+fn opcode_branch<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
 ) -> IResult<&'a str, (&'a Opcode, u8, u8, u8)> {
@@ -127,20 +127,14 @@ fn instruction_branch<'a>(
     ))(input)
 }
 
-fn instruction_target<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, (&'a Opcode, u8)> {
+fn opcode_target<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, u8)> {
     tuple((
         opcode(opcodes, OpcodeType::BranchTarget),
         preceded(space1, u8),
     ))(input)
 }
 
-fn instruction_call<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, (&'a Opcode, u16)> {
+fn opcode_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, u16)> {
     tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)
 }
 
@@ -186,68 +180,68 @@ mod tests {
     }
 
     #[test]
-    fn test_instruction_register() {
+    fn test_opcode_register() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_register("r1 = add r2 r3", &opcodes),
+            opcode_register("r1 = add r2 r3", &opcodes),
             Ok(("", (1, (&Opcode::Add, 2, 3))))
         );
     }
 
     #[test]
-    fn test_instruction_immediate() {
+    fn test_opcode_immediate() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_immediate("r1 = addi r2 5", &opcodes),
+            opcode_immediate("r1 = addi r2 5", &opcodes),
             Ok(("", (1, (&Opcode::Addi, 2, 5))))
         );
         assert_eq!(
-            instruction_immediate("r1 = addi r2 -5", &opcodes),
+            opcode_immediate("r1 = addi r2 -5", &opcodes),
             Ok(("", (1, (&Opcode::Addi, 2, -5))))
         );
     }
 
     #[test]
-    fn test_instruction_load() {
+    fn test_opcode_load() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_load("r1 = lb r2 5", &opcodes),
+            opcode_load("r1 = lb r2 5", &opcodes),
             Ok(("", (1, (&Opcode::Lb, 2, 5))))
         );
     }
 
     #[test]
-    fn test_instruction_store() {
+    fn test_opcode_store() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_store("sb r2 5 = r1", &opcodes),
+            opcode_store("sb r2 5 = r1", &opcodes),
             Ok(("", ((&Opcode::Sb, 2, 5), 1)))
         );
     }
 
     #[test]
-    fn test_instruction_branch() {
+    fn test_opcode_branch() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_branch("beq r1 r2 10", &opcodes),
+            opcode_branch("beq r1 r2 10", &opcodes),
             Ok(("", (&Opcode::Beq, 1, 2, 10)))
         )
     }
 
     #[test]
-    fn test_instruction_target() {
+    fn test_opcode_target() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_target("target 10", &opcodes),
+            opcode_target("target 10", &opcodes),
             Ok(("", (&Opcode::Target, 10)))
         )
     }
 
     #[test]
-    fn test_instruction_call() {
+    fn test_opcode_call() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_call("call 10", &opcodes),
+            opcode_call("call 10", &opcodes),
             Ok(("", (&Opcode::Call, 10)))
         )
     }
