@@ -57,10 +57,7 @@ fn opcode<'a>(
         })(input)
     }
 }
-fn opcode_immediate<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, (Opcode, Immediate)> {
+fn opcode_immediate<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
     let (input, (rd, (opcode, rs, value))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
@@ -70,13 +67,10 @@ fn opcode_immediate<'a>(
             preceded(space1, i16),
         )),
     )(input)?;
-    Ok((input, (opcode, Immediate { rd, rs, value })))
+    Ok((input, (opcode, Immediate { rd, rs, value }).into()))
 }
 
-fn opcode_register<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, (Opcode, Register)> {
+fn opcode_register<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
     let (input, (rd, (opcode, rs1, rs2))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
@@ -86,10 +80,10 @@ fn opcode_register<'a>(
             preceded(space1, register),
         )),
     )(input)?;
-    Ok((input, (opcode, Register { rd, rs1, rs2 })))
+    Ok((input, (opcode, Register { rd, rs1, rs2 }).into()))
 }
 
-fn opcode_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, Load)> {
+fn opcode_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
     let (input, (rd, (opcode, rs, offset))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
@@ -99,10 +93,10 @@ fn opcode_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Op
             preceded(space1, u16),
         )),
     )(input)?;
-    Ok((input, (opcode, Load { rd, rs, offset })))
+    Ok((input, (opcode, Load { rd, rs, offset }).into()))
 }
 
-fn opcode_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, Store)> {
+fn opcode_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
     let (input, ((opcode, rd, offset), rs)) = separated_pair(
         tuple((
             opcode(opcodes, OpcodeType::Store),
@@ -112,34 +106,31 @@ fn opcode_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (O
         delimited(space0, tag("="), space0),
         register,
     )(input)?;
-    Ok((input, (opcode, Store { rd, rs, offset })))
+    Ok((input, (opcode, Store { rd, rs, offset }).into()))
 }
 
-fn opcode_branch<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, Branch)> {
+fn opcode_branch<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
     let (input, (opcode, rs1, rs2, target)) = tuple((
         opcode(opcodes, OpcodeType::Branch),
         preceded(space1, register),
         preceded(space1, register),
         preceded(space1, u8),
     ))(input)?;
-    Ok((input, (opcode, Branch { rs1, rs2, target })))
+    Ok((input, (opcode, Branch { rs1, rs2, target }).into()))
 }
 
-fn opcode_target<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, (Opcode, BranchTarget)> {
+fn opcode_target<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
     let (input, (opcode, identifier)) = tuple((
         opcode(opcodes, OpcodeType::BranchTarget),
         preceded(space1, u8),
     ))(input)?;
-    Ok((input, (opcode, BranchTarget { identifier })))
+    Ok((input, (opcode, BranchTarget { identifier }).into()))
 }
 
-fn opcode_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, CallId)> {
+fn opcode_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Instruction> {
     let (input, (opcode, identifier)) =
         tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)?;
-    Ok((input, (opcode, CallId { identifier })))
+    Ok((input, (opcode, CallId { identifier }).into()))
 }
 
 // r1 = addi r0 15
@@ -190,14 +181,11 @@ mod tests {
             opcode_register("r1 = add r2 r3", &opcodes),
             Ok((
                 "",
-                (
-                    Opcode::Add,
-                    Register {
-                        rd: 1,
-                        rs1: 2,
-                        rs2: 3
-                    }
-                )
+                Instruction::Add(Register {
+                    rd: 1,
+                    rs1: 2,
+                    rs2: 3
+                })
             ))
         );
     }
@@ -209,28 +197,22 @@ mod tests {
             opcode_immediate("r1 = addi r2 5", &opcodes),
             Ok((
                 "",
-                (
-                    Opcode::Addi,
-                    Immediate {
-                        rd: 1,
-                        rs: 2,
-                        value: 5
-                    }
-                )
+                Instruction::Addi(Immediate {
+                    rd: 1,
+                    rs: 2,
+                    value: 5
+                })
             ))
         );
         assert_eq!(
             opcode_immediate("r1 = addi r2 -5", &opcodes),
             Ok((
                 "",
-                (
-                    Opcode::Addi,
-                    Immediate {
-                        rd: 1,
-                        rs: 2,
-                        value: -5
-                    }
-                )
+                Instruction::Addi(Immediate {
+                    rd: 1,
+                    rs: 2,
+                    value: -5
+                })
             ))
         );
     }
@@ -242,14 +224,11 @@ mod tests {
             opcode_load("r1 = lb r2 5", &opcodes),
             Ok((
                 "",
-                (
-                    Opcode::Lb,
-                    Load {
-                        rd: 1,
-                        rs: 2,
-                        offset: 5
-                    }
-                )
+                Instruction::Lb(Load {
+                    rd: 1,
+                    rs: 2,
+                    offset: 5
+                })
             ))
         );
     }
@@ -261,14 +240,11 @@ mod tests {
             opcode_store("sb r2 5 = r1", &opcodes),
             Ok((
                 "",
-                (
-                    Opcode::Sb,
-                    Store {
-                        rd: 2,
-                        rs: 1,
-                        offset: 5
-                    }
-                )
+                Instruction::Sb(Store {
+                    rd: 2,
+                    rs: 1,
+                    offset: 5
+                })
             ))
         );
     }
@@ -280,14 +256,11 @@ mod tests {
             opcode_branch("beq r1 r2 10", &opcodes),
             Ok((
                 "",
-                (
-                    Opcode::Beq,
-                    Branch {
-                        rs1: 1,
-                        rs2: 2,
-                        target: 10
-                    }
-                )
+                Instruction::Beq(Branch {
+                    rs1: 1,
+                    rs2: 2,
+                    target: 10
+                })
             ))
         )
     }
@@ -297,7 +270,7 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_target("target 10", &opcodes),
-            Ok(("", (Opcode::Target, BranchTarget { identifier: 10 })))
+            Ok(("", Instruction::Target(BranchTarget { identifier: 10 })))
         )
     }
 
@@ -306,7 +279,7 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_call("call 10", &opcodes),
-            Ok(("", (Opcode::Call, CallId { identifier: 10 })))
+            Ok(("", Instruction::Call(CallId { identifier: 10 })))
         )
     }
 }
