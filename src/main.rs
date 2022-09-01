@@ -4,6 +4,7 @@ extern crate num_derive;
 
 pub mod assembler;
 pub mod cache;
+pub mod disassembler;
 pub mod function;
 pub mod lang;
 pub mod llvm;

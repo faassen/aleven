@@ -14,6 +14,17 @@ pub enum OpcodeType {
     Call,
 }
 
+#[derive(Debug)]
+pub enum InstructionValue<'a> {
+    Register(&'a Register),
+    Immediate(&'a Immediate),
+    Load(&'a Load),
+    Store(&'a Store),
+    Branch(&'a Branch),
+    BranchTarget(&'a BranchTarget),
+    Call(&'a CallId),
+}
+
 impl OpcodeType {
     pub fn size(&self) -> usize {
         match self {
@@ -143,6 +154,26 @@ impl From<(Opcode, CallId)> for Instruction {
             _ => {
                 panic!("Invalid opcode for call instruction: {:?}", opcode)
             }
+        }
+    }
+}
+
+impl<'a> From<&'a Instruction> for InstructionValue<'a> {
+    fn from(instruction: &'a Instruction) -> Self {
+        use Instruction::*;
+        match instruction {
+            Addi(immediate) | Slti(immediate) | Sltiu(immediate) | Andi(immediate)
+            | Ori(immediate) | Xori(immediate) | Slli(immediate) | Srli(immediate)
+            | Srai(immediate) => InstructionValue::Immediate(immediate),
+            Add(register) | Sub(register) | Slt(register) | Sltu(register) | And(register)
+            | Or(register) | Xor(register) | Sll(register) | Srl(register) | Sra(register) => {
+                InstructionValue::Register(register)
+            }
+            Lh(load) | Lbu(load) | Lb(load) => InstructionValue::Load(load),
+            Sh(store) | Sb(store) => InstructionValue::Store(store),
+            Beq(branch) => InstructionValue::Branch(branch),
+            Target(branch_target) => InstructionValue::BranchTarget(branch_target),
+            Call(call_id) => InstructionValue::Call(call_id),
         }
     }
 }

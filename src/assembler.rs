@@ -209,6 +209,7 @@ fn instructions<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Ve
     Ok((input, instructions))
 }
 
+/// Parse a vector of instructions from a string
 pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
     let opcodes = Opcodes::new();
     let (_, instructions) = instructions(input, &opcodes).map_err(|e| e.to_string())?;
