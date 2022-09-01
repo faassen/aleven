@@ -2,11 +2,12 @@ use crate::assemble::OpcodeType;
 use crate::lang::Opcode;
 use crate::lang::{Instruction, Register};
 use nom::bytes::complete::{tag, take, take_while, take_while_m_n};
-use nom::character::complete::{space0, space1, u8};
+use nom::character::complete::{i16, space0, space1, u16, u8};
 use nom::combinator::{flat_map, map, map_opt, map_res};
-use nom::number::complete::be_u16;
+use nom::error::ParseError;
 use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
+use nom::Parser;
 use rustc_hash::FxHashMap;
 use strum::IntoEnumIterator;
 
@@ -54,6 +55,20 @@ fn opcode<'a>(
         })(input)
     }
 }
+fn instruction_immediate<'a>(
+    input: &'a str,
+    opcodes: &'a Opcodes,
+) -> IResult<&'a str, (u8, (&'a Opcode, u8, i16))> {
+    separated_pair(
+        register,
+        delimited(space0, tag("="), space0),
+        tuple((
+            opcode(opcodes, OpcodeType::Immediate),
+            preceded(space1, register),
+            preceded(space1, i16),
+        )),
+    )(input)
+}
 
 fn instruction_register<'a>(
     input: &'a str,
@@ -70,10 +85,39 @@ fn instruction_register<'a>(
     )(input)
 }
 
-// r1 = addi 15 r0
+fn instruction_load<'a>(
+    input: &'a str,
+    opcodes: &'a Opcodes,
+) -> IResult<&'a str, (u8, (&'a Opcode, u8, u16))> {
+    separated_pair(
+        register,
+        delimited(space0, tag("="), space0),
+        tuple((
+            opcode(opcodes, OpcodeType::Load),
+            preceded(space1, register),
+            preceded(space1, u16),
+        )),
+    )(input)
+}
+
+fn instruction_store<'a>(
+    input: &'a str,
+    opcodes: &'a Opcodes,
+) -> IResult<&'a str, ((&'a Opcode, u8, u16), u8)> {
+    separated_pair(
+        tuple((
+            opcode(opcodes, OpcodeType::Store),
+            preceded(space1, register),
+            preceded(space1, u16),
+        )),
+        delimited(space0, tag("="), space0),
+        register,
+    )(input)
+}
+// r1 = addi r0 15
 // r2 = add r3 r4
-// r1 = lb 10 r0
-// sb 10 r0 = r1
+// r1 = lb r0 10
+// sb r0 10 = r1
 // beq r1 r2 2
 // target 2
 // call 14
@@ -117,6 +161,37 @@ mod tests {
         assert_eq!(
             instruction_register("r1 = add r2 r3", &opcodes),
             Ok(("", (1, (&Opcode::Add, 2, 3))))
+        );
+    }
+
+    #[test]
+    fn test_instruction_immediate() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instruction_immediate("r1 = addi r2 5", &opcodes),
+            Ok(("", (1, (&Opcode::Addi, 2, 5))))
+        );
+        assert_eq!(
+            instruction_immediate("r1 = addi r2 -5", &opcodes),
+            Ok(("", (1, (&Opcode::Addi, 2, -5))))
+        );
+    }
+
+    #[test]
+    fn test_instruction_load() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instruction_load("r1 = lb r2 5", &opcodes),
+            Ok(("", (1, (&Opcode::Lb, 2, 5))))
+        );
+    }
+
+    #[test]
+    fn test_instruction_store() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instruction_store("sb r2 5 = r1", &opcodes),
+            Ok(("", ((&Opcode::Sb, 2, 5), 1)))
         );
     }
 }
