@@ -21,7 +21,7 @@ impl Disassembler for Instruction {
                 register.rd, opcode, register.rs1, register.rs2
             ),
             InstructionValue::Load(load) => {
-                format!("r{} = {} r{} r{}", load.rd, opcode, load.rs, load.offset)
+                format!("r{} = {} r{} {}", load.rd, opcode, load.rs, load.offset)
             }
             InstructionValue::Store(store) => {
                 format!("{} r{} {} = r{}", opcode, store.rd, store.offset, store.rs)
@@ -51,7 +51,10 @@ pub fn disassemble(instructions: &[Instruction]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assembler::parse;
+    use crate::disassembler::disassemble;
     use crate::lang::{Immediate, Register};
+    use crate::serializer::Serializer;
 
     #[test]
     fn test_disassemble() {

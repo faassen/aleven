@@ -37,3 +37,8 @@ path = "fuzz_targets/both.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "asdis"
+path = "fuzz_targets/asdis.rs"
+test = false
+doc = false
