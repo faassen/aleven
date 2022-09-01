@@ -1,6 +1,6 @@
-use crate::assemble::OpcodeType;
 use crate::lang::Opcode;
 use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
+use crate::serializer::OpcodeType;
 use nom::bytes::complete::{tag, take, take_while, take_while_m_n};
 use nom::character::complete::{i16, space0, space1, u16, u8};
 use nom::combinator::{flat_map, map, map_opt, map_res};
