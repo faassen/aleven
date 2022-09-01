@@ -400,4 +400,23 @@ mod tests {
             ))
         )
     }
+
+    // #[test]
+    // fn test_instructions_with_comment_lines() {
+    //     let opcodes = Opcodes::new();
+    //     assert_eq!(
+    //         instructions("call 10\n# this is a comment \nr1 = add r2 r3", &opcodes),
+    //         Ok((
+    //             "",
+    //             vec![
+    //                 Instruction::Call(CallId { identifier: 10 }),
+    //                 Instruction::Add(Register {
+    //                     rd: 1,
+    //                     rs1: 2,
+    //                     rs2: 3
+    //                 })
+    //             ]
+    //         ))
+    //     )
+    // }
 }
