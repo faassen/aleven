@@ -166,7 +166,7 @@ fn end_of_line(input: &str) -> IResult<&str, ()> {
     }
 }
 
-fn peol_comment<'a>(i: &'a str) -> IResult<&'a str, ()> {
+fn peol_comment(i: &str) -> IResult<&str, ()> {
     value(
         (), // Output is thrown away.
         pair(char('#'), is_not("\n\r")),
@@ -197,6 +197,12 @@ fn instructions<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Ve
         end_of_line,
     ))(input)?;
     Ok((input, instructions))
+}
+
+pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
+    let opcodes = Opcodes::new();
+    let (_, instructions) = instructions(input, &opcodes).map_err(|e| e.to_string())?;
+    Ok(instructions)
 }
 
 #[cfg(test)]

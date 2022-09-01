@@ -17,5 +17,6 @@ pub use cache::FunctionValueCache;
 pub use function::Function;
 pub use lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 pub use llvm::CodeGen;
+pub use parser::parse;
 pub use program::Program;
 pub use serializer::Serializer;
