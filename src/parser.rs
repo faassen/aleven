@@ -9,6 +9,7 @@ use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 use nom::Parser;
 use rustc_hash::FxHashMap;
+use std::convert::{From, Into};
 use strum::IntoEnumIterator;
 
 #[derive(Debug)]
@@ -39,13 +40,14 @@ fn register(input: &str) -> IResult<&str, u8> {
 fn opcode<'a>(
     opcodes: &'a Opcodes,
     opcode_type: OpcodeType,
-) -> impl Fn(&'a str) -> IResult<&'a str, &Opcode> {
+) -> impl Fn(&'a str) -> IResult<&'a str, Opcode> {
     move |input: &'a str| {
         map_opt(take_while(|c: char| c.is_alphanumeric()), |s| {
             let opcode = opcodes.get(s);
             if let Some(opcode) = opcode {
-                if opcode.opcode_type() == opcode_type {
-                    Some(opcode)
+                let t: OpcodeType = (*opcode).into();
+                if t == opcode_type {
+                    Some(*opcode)
                 } else {
                     None
                 }
@@ -58,7 +60,7 @@ fn opcode<'a>(
 fn opcode_immediate<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, (&'a Opcode, Immediate)> {
+) -> IResult<&'a str, (Opcode, Immediate)> {
     let (input, (rd, (opcode, rs, value))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
@@ -74,7 +76,7 @@ fn opcode_immediate<'a>(
 fn opcode_register<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, (&'a Opcode, Register)> {
+) -> IResult<&'a str, (Opcode, Register)> {
     let (input, (rd, (opcode, rs1, rs2))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
@@ -87,7 +89,7 @@ fn opcode_register<'a>(
     Ok((input, (opcode, Register { rd, rs1, rs2 })))
 }
 
-fn opcode_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, Load)> {
+fn opcode_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, Load)> {
     let (input, (rd, (opcode, rs, offset))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
@@ -100,7 +102,7 @@ fn opcode_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'
     Ok((input, (opcode, Load { rd, rs, offset })))
 }
 
-fn opcode_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, Store)> {
+fn opcode_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, Store)> {
     let (input, ((opcode, rd, offset), rs)) = separated_pair(
         tuple((
             opcode(opcodes, OpcodeType::Store),
@@ -113,10 +115,7 @@ fn opcode_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&
     Ok((input, (opcode, Store { rd, rs, offset })))
 }
 
-fn opcode_branch<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, (&'a Opcode, Branch)> {
+fn opcode_branch<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, Branch)> {
     let (input, (opcode, rs1, rs2, target)) = tuple((
         opcode(opcodes, OpcodeType::Branch),
         preceded(space1, register),
@@ -129,7 +128,7 @@ fn opcode_branch<'a>(
 fn opcode_target<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, (&'a Opcode, BranchTarget)> {
+) -> IResult<&'a str, (Opcode, BranchTarget)> {
     let (input, (opcode, identifier)) = tuple((
         opcode(opcodes, OpcodeType::BranchTarget),
         preceded(space1, u8),
@@ -137,7 +136,7 @@ fn opcode_target<'a>(
     Ok((input, (opcode, BranchTarget { identifier })))
 }
 
-fn opcode_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, CallId)> {
+fn opcode_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (Opcode, CallId)> {
     let (input, (opcode, identifier)) =
         tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)?;
     Ok((input, (opcode, CallId { identifier })))
@@ -178,7 +177,7 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode(&opcodes, OpcodeType::Immediate)("addi"),
-            Ok(("", &Opcode::Addi))
+            Ok(("", Opcode::Addi))
         );
 
         assert_error!(opcode(&opcodes, OpcodeType::Register)("addi"));
@@ -192,7 +191,7 @@ mod tests {
             Ok((
                 "",
                 (
-                    &Opcode::Add,
+                    Opcode::Add,
                     Register {
                         rd: 1,
                         rs1: 2,
@@ -211,7 +210,7 @@ mod tests {
             Ok((
                 "",
                 (
-                    &Opcode::Addi,
+                    Opcode::Addi,
                     Immediate {
                         rd: 1,
                         rs: 2,
@@ -225,7 +224,7 @@ mod tests {
             Ok((
                 "",
                 (
-                    &Opcode::Addi,
+                    Opcode::Addi,
                     Immediate {
                         rd: 1,
                         rs: 2,
@@ -244,7 +243,7 @@ mod tests {
             Ok((
                 "",
                 (
-                    &Opcode::Lb,
+                    Opcode::Lb,
                     Load {
                         rd: 1,
                         rs: 2,
@@ -263,7 +262,7 @@ mod tests {
             Ok((
                 "",
                 (
-                    &Opcode::Sb,
+                    Opcode::Sb,
                     Store {
                         rd: 2,
                         rs: 1,
@@ -282,7 +281,7 @@ mod tests {
             Ok((
                 "",
                 (
-                    &Opcode::Beq,
+                    Opcode::Beq,
                     Branch {
                         rs1: 1,
                         rs2: 2,
@@ -298,7 +297,7 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_target("target 10", &opcodes),
-            Ok(("", (&Opcode::Target, BranchTarget { identifier: 10 })))
+            Ok(("", (Opcode::Target, BranchTarget { identifier: 10 })))
         )
     }
 
@@ -307,7 +306,7 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_call("call 10", &opcodes),
-            Ok(("", (&Opcode::Call, CallId { identifier: 10 })))
+            Ok(("", (Opcode::Call, CallId { identifier: 10 })))
         )
     }
 }
