@@ -7,6 +7,7 @@ mod function;
 mod lang;
 mod llvm;
 mod llvmasm;
+mod opcodetype;
 mod parser;
 mod program;
 pub mod run;

@@ -1,15 +1,13 @@
 use crate::lang::Opcode;
 use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
-use crate::serializer::OpcodeType;
-use nom::bytes::complete::{tag, take, take_while, take_while_m_n};
+use crate::opcodetype::OpcodeType;
+use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{i16, space0, space1, u16, u8};
-use nom::combinator::{flat_map, map, map_opt, map_res};
-use nom::error::ParseError;
-use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
+use nom::combinator::map_opt;
+use nom::sequence::{delimited, preceded, separated_pair, tuple};
 use nom::IResult;
-use nom::Parser;
 use rustc_hash::FxHashMap;
-use std::convert::{From, Into};
+use std::convert::Into;
 use strum::IntoEnumIterator;
 
 #[derive(Debug)]
