@@ -12,7 +12,7 @@ mod parser;
 mod program;
 pub mod run;
 
-pub use assemble::Assembler;
+pub use assemble::Serializer;
 pub use cache::FunctionValueCache;
 pub use function::Function;
 pub use lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};

@@ -1,23 +1,29 @@
 #![no_main]
 extern crate aleven;
-use aleven::Assembler;
 use aleven::CodeGen;
 use aleven::Function;
+use aleven::FunctionValueCache;
+use aleven::Program;
+use aleven::Serializer;
 use inkwell::context::Context;
-use inkwell::OptimizationLevel;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(data);
-
-    let function = Function::new(&instructions);
+    let serializer = Serializer::new();
+    let instructions = serializer.deserialize(data);
 
     let context = Context::create();
     let codegen = CodeGen::new(&context);
 
-    let func = function.compile(&codegen, data.len() as u16);
-    codegen.module.verify().unwrap();
+    let program = Program::from_instructions(&instructions);
     let mut memory = data.to_vec();
-    Function::run(func, &mut memory);
+    let func = program.compile(
+        0,
+        &codegen,
+        memory.len() as u16,
+        &mut FunctionValueCache::new(),
+    );
+    codegen.module.verify().unwrap();
+
+    Function::run(&func, &mut memory);
 });

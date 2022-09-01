@@ -3,7 +3,7 @@ use crate::lang::{
 };
 use byteorder::{ByteOrder, LittleEndian};
 
-pub struct Assembler {}
+pub struct Serializer {}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum OpcodeType {
@@ -16,28 +16,28 @@ pub enum OpcodeType {
     Call,
 }
 
-trait ValueAssembler {
-    fn assemble(&self, output: &mut Vec<u8>);
+trait ValueSerializer {
+    fn serialize(&self, output: &mut Vec<u8>);
 }
 
-trait ValueDisassembler {
+trait ValueDerializer {
     fn size() -> usize;
-    fn disassemble(input: &[u8]) -> Self;
+    fn deserialize(input: &[u8]) -> Self;
 }
 
-impl ValueAssembler for Instruction {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for Instruction {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.push(opcode(self));
         use Instruction::*;
         match self {
             Addi(immediate) | Slti(immediate) | Sltiu(immediate) | Andi(immediate)
             | Ori(immediate) | Xori(immediate) | Slli(immediate) | Srli(immediate)
-            | Srai(immediate) => immediate.assemble(output),
+            | Srai(immediate) => immediate.serialize(output),
             Add(register) | Sub(register) | Sll(register) | Srl(register) | Sra(register) => {
-                register.assemble(output)
+                register.serialize(output)
             }
-            Lh(load) | Lbu(load) | Lb(load) => load.assemble(output),
-            Sh(store) | Sb(store) => store.assemble(output),
+            Lh(load) | Lbu(load) | Lb(load) => load.serialize(output),
+            Sh(store) | Sb(store) => store.serialize(output),
             _ => {
                 panic!("unimplemented instruction: {:?}", self)
             }
@@ -50,26 +50,26 @@ fn opcode(instruction: &Instruction) -> u8 {
     opcode.encode()
 }
 
-impl Default for Assembler {
+impl Default for Serializer {
     fn default() -> Self {
-        Assembler::new()
+        Serializer::new()
     }
 }
 
-impl Assembler {
-    pub fn new() -> Assembler {
-        Assembler {}
+impl Serializer {
+    pub fn new() -> Serializer {
+        Serializer {}
     }
 
-    pub fn assemble(&self, instructions: &[Instruction]) -> Vec<u8> {
+    pub fn serialize(&self, instructions: &[Instruction]) -> Vec<u8> {
         let mut result = Vec::new();
         for instruction in instructions {
-            instruction.assemble(&mut result);
+            instruction.serialize(&mut result);
         }
         result
     }
 
-    pub fn disassemble(&self, values: &[u8]) -> Vec<Instruction> {
+    pub fn deserialize(&self, values: &[u8]) -> Vec<Instruction> {
         let mut result = Vec::new();
         let mut index: usize = 0;
         while index < values.len() {
@@ -80,7 +80,7 @@ impl Assembler {
                 if end > values.len() {
                     break;
                 }
-                result.push(opcode.disassemble(&values[start..end]));
+                result.push(opcode.deserialize(&values[start..end]));
                 index = end;
             } else {
                 index += 1;
@@ -99,36 +99,36 @@ impl Opcode {
         num::FromPrimitive::from_u8(value)
     }
 
-    fn disassemble(&self, values: &[u8]) -> Instruction {
+    fn deserialize(&self, values: &[u8]) -> Instruction {
         use Opcode::*;
         match self {
-            Addi => Instruction::Addi(Immediate::disassemble(values)),
-            Slti => Instruction::Slti(Immediate::disassemble(values)),
-            Sltiu => Instruction::Sltiu(Immediate::disassemble(values)),
-            Andi => Instruction::Andi(Immediate::disassemble(values)),
-            Ori => Instruction::Ori(Immediate::disassemble(values)),
-            Xori => Instruction::Xori(Immediate::disassemble(values)),
-            Slli => Instruction::Slli(Immediate::disassemble(values)),
-            Srli => Instruction::Srli(Immediate::disassemble(values)),
-            Srai => Instruction::Srai(Immediate::disassemble(values)),
-            Add => Instruction::Add(Register::disassemble(values)),
-            Sub => Instruction::Sub(Register::disassemble(values)),
-            Slt => Instruction::Slt(Register::disassemble(values)),
-            Sltu => Instruction::Sltu(Register::disassemble(values)),
-            And => Instruction::And(Register::disassemble(values)),
-            Or => Instruction::Or(Register::disassemble(values)),
-            Xor => Instruction::Xor(Register::disassemble(values)),
-            Sll => Instruction::Sll(Register::disassemble(values)),
-            Srl => Instruction::Srl(Register::disassemble(values)),
-            Sra => Instruction::Sra(Register::disassemble(values)),
-            Lh => Instruction::Lh(Load::disassemble(values)),
-            Lbu => Instruction::Lbu(Load::disassemble(values)),
-            Lb => Instruction::Lb(Load::disassemble(values)),
-            Sh => Instruction::Sh(Store::disassemble(values)),
-            Sb => Instruction::Sb(Store::disassemble(values)),
-            Beq => Instruction::Beq(Branch::disassemble(values)),
-            Target => Instruction::Target(BranchTarget::disassemble(values)),
-            Call => Instruction::Call(CallId::disassemble(values)),
+            Addi => Instruction::Addi(Immediate::deserialize(values)),
+            Slti => Instruction::Slti(Immediate::deserialize(values)),
+            Sltiu => Instruction::Sltiu(Immediate::deserialize(values)),
+            Andi => Instruction::Andi(Immediate::deserialize(values)),
+            Ori => Instruction::Ori(Immediate::deserialize(values)),
+            Xori => Instruction::Xori(Immediate::deserialize(values)),
+            Slli => Instruction::Slli(Immediate::deserialize(values)),
+            Srli => Instruction::Srli(Immediate::deserialize(values)),
+            Srai => Instruction::Srai(Immediate::deserialize(values)),
+            Add => Instruction::Add(Register::deserialize(values)),
+            Sub => Instruction::Sub(Register::deserialize(values)),
+            Slt => Instruction::Slt(Register::deserialize(values)),
+            Sltu => Instruction::Sltu(Register::deserialize(values)),
+            And => Instruction::And(Register::deserialize(values)),
+            Or => Instruction::Or(Register::deserialize(values)),
+            Xor => Instruction::Xor(Register::deserialize(values)),
+            Sll => Instruction::Sll(Register::deserialize(values)),
+            Srl => Instruction::Srl(Register::deserialize(values)),
+            Sra => Instruction::Sra(Register::deserialize(values)),
+            Lh => Instruction::Lh(Load::deserialize(values)),
+            Lbu => Instruction::Lbu(Load::deserialize(values)),
+            Lb => Instruction::Lb(Load::deserialize(values)),
+            Sh => Instruction::Sh(Store::deserialize(values)),
+            Sb => Instruction::Sb(Store::deserialize(values)),
+            Beq => Instruction::Beq(Branch::deserialize(values)),
+            Target => Instruction::Target(BranchTarget::deserialize(values)),
+            Call => Instruction::Call(CallId::deserialize(values)),
         }
     }
 }
@@ -151,12 +151,12 @@ fn clampreg(value: u8) -> u8 {
     value % 32
 }
 
-impl ValueDisassembler for Immediate {
+impl ValueDerializer for Immediate {
     fn size() -> usize {
         4
     }
 
-    fn disassemble(input: &[u8]) -> Immediate {
+    fn deserialize(input: &[u8]) -> Immediate {
         Immediate {
             value: bytes_to_i16(&input[0..2]),
             rs: clampreg(input[2]),
@@ -165,19 +165,19 @@ impl ValueDisassembler for Immediate {
     }
 }
 
-impl ValueAssembler for Immediate {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for Immediate {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.extend(i16_to_bytes(self.value));
         output.push(self.rs);
         output.push(self.rd);
     }
 }
 
-impl ValueDisassembler for Load {
+impl ValueDerializer for Load {
     fn size() -> usize {
         4
     }
-    fn disassemble(input: &[u8]) -> Load {
+    fn deserialize(input: &[u8]) -> Load {
         Load {
             offset: bytes_to_u16(&input[0..2]),
             rs: clampreg(input[2]),
@@ -186,19 +186,19 @@ impl ValueDisassembler for Load {
     }
 }
 
-impl ValueAssembler for Load {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for Load {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.extend(u16_to_bytes(self.offset));
         output.push(self.rs);
         output.push(self.rd);
     }
 }
 
-impl ValueDisassembler for Store {
+impl ValueDerializer for Store {
     fn size() -> usize {
         4
     }
-    fn disassemble(input: &[u8]) -> Self {
+    fn deserialize(input: &[u8]) -> Self {
         Store {
             offset: bytes_to_u16(&input[0..2]),
             rs: clampreg(input[2]),
@@ -207,19 +207,19 @@ impl ValueDisassembler for Store {
     }
 }
 
-impl ValueAssembler for Store {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for Store {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.extend(u16_to_bytes(self.offset));
         output.push(self.rs);
         output.push(self.rd);
     }
 }
 
-impl ValueDisassembler for Register {
+impl ValueDerializer for Register {
     fn size() -> usize {
         3
     }
-    fn disassemble(input: &[u8]) -> Self {
+    fn deserialize(input: &[u8]) -> Self {
         Register {
             rs1: clampreg(input[0]),
             rs2: clampreg(input[1]),
@@ -228,19 +228,19 @@ impl ValueDisassembler for Register {
     }
 }
 
-impl ValueAssembler for Register {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for Register {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.push(self.rs1);
         output.push(self.rs2);
         output.push(self.rd);
     }
 }
 
-impl ValueDisassembler for Branch {
+impl ValueDerializer for Branch {
     fn size() -> usize {
         3
     }
-    fn disassemble(input: &[u8]) -> Self {
+    fn deserialize(input: &[u8]) -> Self {
         Branch {
             target: input[0],
             rs1: clampreg(input[1]),
@@ -249,44 +249,44 @@ impl ValueDisassembler for Branch {
     }
 }
 
-impl ValueAssembler for Branch {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for Branch {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.push(self.target);
         output.push(self.rs1);
         output.push(self.rs2);
     }
 }
 
-impl ValueDisassembler for BranchTarget {
+impl ValueDerializer for BranchTarget {
     fn size() -> usize {
         1
     }
-    fn disassemble(input: &[u8]) -> Self {
+    fn deserialize(input: &[u8]) -> Self {
         BranchTarget {
             identifier: input[0],
         }
     }
 }
 
-impl ValueAssembler for BranchTarget {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for BranchTarget {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.push(self.identifier);
     }
 }
 
-impl ValueDisassembler for CallId {
+impl ValueDerializer for CallId {
     fn size() -> usize {
         2
     }
-    fn disassemble(input: &[u8]) -> Self {
+    fn deserialize(input: &[u8]) -> Self {
         CallId {
             identifier: bytes_to_u16(&input[0..2]),
         }
     }
 }
 
-impl ValueAssembler for CallId {
-    fn assemble(&self, output: &mut Vec<u8>) {
+impl ValueSerializer for CallId {
+    fn serialize(&self, output: &mut Vec<u8>) {
         output.extend(u16_to_bytes(self.identifier));
     }
 }
@@ -435,9 +435,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_assemble() {
-        let assembler = Assembler::new();
-        let bytes = assembler.assemble(&[Instruction::Add(Register {
+    fn test_serialize() {
+        let serializer = Serializer::new();
+        let bytes = serializer.serialize(&[Instruction::Add(Register {
             rs1: 0,
             rs2: 1,
             rd: 2,
@@ -446,14 +446,14 @@ mod tests {
     }
 
     #[test]
-    fn test_disassemble() {
-        let assembler = Assembler::new();
-        let bytes = assembler.assemble(&[Instruction::Add(Register {
+    fn test_deserialize() {
+        let serializer = Serializer::new();
+        let bytes = serializer.serialize(&[Instruction::Add(Register {
             rs1: 0,
             rs2: 1,
             rd: 2,
         })]);
-        let instructions = assembler.disassemble(&bytes);
+        let instructions = serializer.deserialize(&bytes);
         assert_eq!(instructions.len(), 1);
         assert_eq!(
             instructions[0],
@@ -466,20 +466,20 @@ mod tests {
     }
 
     #[test]
-    fn test_disassemble_invalid_instruction() {
+    fn test_deserialize_invalid_instruction() {
         // 127 isn't going to be a valid instruction soon, but 0 is, but there isn't
         // enough data to disassemble it
         let bytes = vec![127, 0, 0];
-        let assembler = Assembler::new();
-        let instructions = assembler.disassemble(&bytes);
+        let serializer = Serializer::new();
+        let instructions = serializer.deserialize(&bytes);
         assert_eq!(instructions.len(), 0);
     }
 
     #[test]
-    fn test_disassemble_register_out_of_range() {
+    fn test_deserialize_register_out_of_range() {
         let bytes = vec![0, 10, 0, 43, 0];
-        let assembler = Assembler::new();
-        let instructions = assembler.disassemble(&bytes);
+        let serializer = Serializer::new();
+        let instructions = serializer.deserialize(&bytes);
         assert_eq!(instructions.len(), 1);
         assert_eq!(
             instructions[0],

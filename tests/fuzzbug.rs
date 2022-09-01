@@ -1,61 +1,61 @@
 use aleven::run::{run_interpreter_func, run_llvm_func, RunnerFunc};
-use aleven::Assembler;
+use aleven::Serializer;
 use aleven::{Immediate, Instruction, Load, Register, Store};
 use parameterized::parameterized;
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug1(runner: RunnerFunc) {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(&[10, 0, 43, 45]);
+    let assembler = Serializer::new();
+    let instructions = assembler.deserialize(&[10, 0, 43, 45]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug2(runner: RunnerFunc) {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(&[11, 42, 222, 10]);
+    let assembler = Serializer::new();
+    let instructions = assembler.deserialize(&[11, 42, 222, 10]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug3(runner: RunnerFunc) {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(&[]);
+    let assembler = Serializer::new();
+    let instructions = assembler.deserialize(&[]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug4(runner: RunnerFunc) {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(&[7, 92, 209, 218, 176]);
+    let assembler = Serializer::new();
+    let instructions = assembler.deserialize(&[7, 92, 209, 218, 176]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug5(runner: RunnerFunc) {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(&[254, 22, 68, 156, 25, 49]);
+    let assembler = Serializer::new();
+    let instructions = assembler.deserialize(&[254, 22, 68, 156, 25, 49]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug6(runner: RunnerFunc) {
-    let assembler = Assembler::new();
+    let assembler = Serializer::new();
     let instructions =
-        assembler.disassemble(&[5, 0, 0, 0, 0, 0, 0, 91, 27, 0, 0, 0, 96, 0, 1, 213, 21]);
+        assembler.deserialize(&[5, 0, 0, 0, 0, 0, 0, 91, 27, 0, 0, 0, 96, 0, 1, 213, 21]);
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug7(runner: RunnerFunc) {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(&[
+    let assembler = Serializer::new();
+    let instructions = assembler.deserialize(&[
         5, 234, 234, 234, 234, 234, 234, 234, 234, 29, 21, 234, 234, 234, 234, 32, 10, 32, 6, 10,
     ]);
     let mut memory = [0u8; 64];
@@ -64,8 +64,8 @@ fn test_bug7(runner: RunnerFunc) {
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug8(runner: RunnerFunc) {
-    let assembler = Assembler::new();
-    let instructions = assembler.disassemble(&[
+    let assembler = Serializer::new();
+    let instructions = assembler.deserialize(&[
         0, 0, 234, 249, 185, 255, 230, 5, 191, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
         150, 150, 150, 150, 150, 150, 150, 22, 6, 70, 0, 22,
     ]);
@@ -75,41 +75,41 @@ fn test_bug8(runner: RunnerFunc) {
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug9(runner: RunnerFunc) {
-    let assembler = Assembler::new();
+    let assembler = Serializer::new();
     let data = [
         20, 77, 22, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 0, 146,
         146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 146, 22,
         22, 0, 0, 0, 0, 0, 233, 0,
     ];
-    let instructions = assembler.disassemble(&data);
+    let instructions = assembler.deserialize(&data);
     let mut memory = data.to_vec();
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug10(runner: RunnerFunc) {
-    let assembler = Assembler::new();
+    let assembler = Serializer::new();
     let data = [25, 24, 24, 24, 24, 24];
-    let instructions = assembler.disassemble(&data);
+    let instructions = assembler.deserialize(&data);
     let mut memory = data.to_vec();
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug11(runner: RunnerFunc) {
-    let assembler = Assembler::new();
+    let assembler = Serializer::new();
     let data = [
         19, 25, 176, 25, 255, 25, 255, 255, 255, 255, 25, 25, 255, 12, 255, 25, 255, 12, 25, 255,
         255, 25, 25,
     ];
-    let instructions = assembler.disassemble(&data);
+    let instructions = assembler.deserialize(&data);
     let mut memory = data.to_vec();
     runner(&instructions, &mut memory);
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
 fn test_bug12(runner: RunnerFunc) {
-    let assembler = Assembler::new();
+    let assembler = Serializer::new();
     let data = [
         25, 176, 19, 24, 34, 24, 24, 24, 255, 255, 255, 255, 24, 24, 24, 24, 24, 24, 24, 24, 24,
         24, 24, 24, 24, 24, 24, 24, 24, 9, 9, 235, 24, 90, 0, 0, 0, 24, 24, 24, 24, 235, 176, 25,
@@ -117,7 +117,7 @@ fn test_bug12(runner: RunnerFunc) {
         24, 235, 176, 25, 255, 25, 19, 25, 126, 25, 176, 25, 255, 25, 19, 25, 25, 25, 0, 0, 0, 0,
         24, 24, 24, 24, 24, 24, 24, 25, 126,
     ];
-    let instructions = assembler.disassemble(&data);
+    let instructions = assembler.deserialize(&data);
     let mut memory = data.to_vec();
     runner(&instructions, &mut memory);
 }
