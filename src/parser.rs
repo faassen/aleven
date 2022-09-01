@@ -1,6 +1,6 @@
 use crate::assemble::OpcodeType;
 use crate::lang::Opcode;
-use crate::lang::{Instruction, Register};
+use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 use nom::bytes::complete::{tag, take, take_while, take_while_m_n};
 use nom::character::complete::{i16, space0, space1, u16, u8};
 use nom::combinator::{flat_map, map, map_opt, map_res};
@@ -58,8 +58,8 @@ fn opcode<'a>(
 fn opcode_immediate<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, (u8, (&'a Opcode, u8, i16))> {
-    separated_pair(
+) -> IResult<&'a str, (&'a Opcode, Immediate)> {
+    let (input, (rd, (opcode, rs, value))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
         tuple((
@@ -67,14 +67,15 @@ fn opcode_immediate<'a>(
             preceded(space1, register),
             preceded(space1, i16),
         )),
-    )(input)
+    )(input)?;
+    Ok((input, (opcode, Immediate { rd, rs, value })))
 }
 
 fn opcode_register<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, (u8, (&'a Opcode, u8, u8))> {
-    separated_pair(
+) -> IResult<&'a str, (&'a Opcode, Register)> {
+    let (input, (rd, (opcode, rs1, rs2))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
         tuple((
@@ -82,14 +83,12 @@ fn opcode_register<'a>(
             preceded(space1, register),
             preceded(space1, register),
         )),
-    )(input)
+    )(input)?;
+    Ok((input, (opcode, Register { rd, rs1, rs2 })))
 }
 
-fn opcode_load<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, (u8, (&'a Opcode, u8, u16))> {
-    separated_pair(
+fn opcode_load<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, Load)> {
+    let (input, (rd, (opcode, rs, offset))) = separated_pair(
         register,
         delimited(space0, tag("="), space0),
         tuple((
@@ -97,14 +96,12 @@ fn opcode_load<'a>(
             preceded(space1, register),
             preceded(space1, u16),
         )),
-    )(input)
+    )(input)?;
+    Ok((input, (opcode, Load { rd, rs, offset })))
 }
 
-fn opcode_store<'a>(
-    input: &'a str,
-    opcodes: &'a Opcodes,
-) -> IResult<&'a str, ((&'a Opcode, u8, u16), u8)> {
-    separated_pair(
+fn opcode_store<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, Store)> {
+    let (input, ((opcode, rd, offset), rs)) = separated_pair(
         tuple((
             opcode(opcodes, OpcodeType::Store),
             preceded(space1, register),
@@ -112,30 +109,38 @@ fn opcode_store<'a>(
         )),
         delimited(space0, tag("="), space0),
         register,
-    )(input)
+    )(input)?;
+    Ok((input, (opcode, Store { rd, rs, offset })))
 }
 
 fn opcode_branch<'a>(
     input: &'a str,
     opcodes: &'a Opcodes,
-) -> IResult<&'a str, (&'a Opcode, u8, u8, u8)> {
-    tuple((
+) -> IResult<&'a str, (&'a Opcode, Branch)> {
+    let (input, (opcode, rs1, rs2, target)) = tuple((
         opcode(opcodes, OpcodeType::Branch),
         preceded(space1, register),
         preceded(space1, register),
         preceded(space1, u8),
-    ))(input)
+    ))(input)?;
+    Ok((input, (opcode, Branch { rs1, rs2, target })))
 }
 
-fn opcode_target<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, u8)> {
-    tuple((
+fn opcode_target<'a>(
+    input: &'a str,
+    opcodes: &'a Opcodes,
+) -> IResult<&'a str, (&'a Opcode, BranchTarget)> {
+    let (input, (opcode, identifier)) = tuple((
         opcode(opcodes, OpcodeType::BranchTarget),
         preceded(space1, u8),
-    ))(input)
+    ))(input)?;
+    Ok((input, (opcode, BranchTarget { identifier })))
 }
 
-fn opcode_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, u16)> {
-    tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)
+fn opcode_call<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, (&'a Opcode, CallId)> {
+    let (input, (opcode, identifier)) =
+        tuple((opcode(opcodes, OpcodeType::Call), preceded(space1, u16)))(input)?;
+    Ok((input, (opcode, CallId { identifier })))
 }
 
 // r1 = addi r0 15
@@ -184,7 +189,17 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_register("r1 = add r2 r3", &opcodes),
-            Ok(("", (1, (&Opcode::Add, 2, 3))))
+            Ok((
+                "",
+                (
+                    &Opcode::Add,
+                    Register {
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 3
+                    }
+                )
+            ))
         );
     }
 
@@ -193,11 +208,31 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_immediate("r1 = addi r2 5", &opcodes),
-            Ok(("", (1, (&Opcode::Addi, 2, 5))))
+            Ok((
+                "",
+                (
+                    &Opcode::Addi,
+                    Immediate {
+                        rd: 1,
+                        rs: 2,
+                        value: 5
+                    }
+                )
+            ))
         );
         assert_eq!(
             opcode_immediate("r1 = addi r2 -5", &opcodes),
-            Ok(("", (1, (&Opcode::Addi, 2, -5))))
+            Ok((
+                "",
+                (
+                    &Opcode::Addi,
+                    Immediate {
+                        rd: 1,
+                        rs: 2,
+                        value: -5
+                    }
+                )
+            ))
         );
     }
 
@@ -206,7 +241,17 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_load("r1 = lb r2 5", &opcodes),
-            Ok(("", (1, (&Opcode::Lb, 2, 5))))
+            Ok((
+                "",
+                (
+                    &Opcode::Lb,
+                    Load {
+                        rd: 1,
+                        rs: 2,
+                        offset: 5
+                    }
+                )
+            ))
         );
     }
 
@@ -215,7 +260,17 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_store("sb r2 5 = r1", &opcodes),
-            Ok(("", ((&Opcode::Sb, 2, 5), 1)))
+            Ok((
+                "",
+                (
+                    &Opcode::Sb,
+                    Store {
+                        rd: 2,
+                        rs: 1,
+                        offset: 5
+                    }
+                )
+            ))
         );
     }
 
@@ -224,7 +279,17 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_branch("beq r1 r2 10", &opcodes),
-            Ok(("", (&Opcode::Beq, 1, 2, 10)))
+            Ok((
+                "",
+                (
+                    &Opcode::Beq,
+                    Branch {
+                        rs1: 1,
+                        rs2: 2,
+                        target: 10
+                    }
+                )
+            ))
         )
     }
 
@@ -233,16 +298,16 @@ mod tests {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_target("target 10", &opcodes),
-            Ok(("", (&Opcode::Target, 10)))
+            Ok(("", (&Opcode::Target, BranchTarget { identifier: 10 })))
         )
     }
 
     #[test]
-    fn test_opcode_call() {
+    fn test_call() {
         let opcodes = Opcodes::new();
         assert_eq!(
             opcode_call("call 10", &opcodes),
-            Ok(("", (&Opcode::Call, 10)))
+            Ok(("", (&Opcode::Call, CallId { identifier: 10 })))
         )
     }
 }
