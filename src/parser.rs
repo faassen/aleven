@@ -1,11 +1,12 @@
 use crate::lang::Opcode;
 use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 use crate::opcodetype::OpcodeType;
+use nom::branch::alt;
 use nom::bytes::complete::{is_not, tag, take_until, take_while};
-use nom::character::complete::{char, multispace0};
+use nom::character::complete::{char, multispace0, multispace1};
 use nom::character::complete::{i16, line_ending, newline, space0, space1, u16, u8};
 use nom::combinator::{eof, map_opt, opt, value};
-use nom::multi::many_till;
+use nom::multi::{many0, many_till};
 use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 use rustc_hash::FxHashMap;
@@ -166,6 +167,10 @@ fn end_of_line(input: &str) -> IResult<&str, ()> {
     }
 }
 
+fn whitespace(input: &str) -> IResult<&str, ()> {
+    value((), multispace1)(input)
+}
+
 fn peol_comment(input: &str) -> IResult<&str, ()> {
     value(
         (), // Output is thrown away.
@@ -173,15 +178,9 @@ fn peol_comment(input: &str) -> IResult<&str, ()> {
     )(input)
 }
 
-// fn whitespace(input: &str) -> IResult<&str, ()> {
-//     let (input, _) = multispace0(input)?;
-//     Ok((input, ()))
-// }
-
-// fn whitespace_or_comment(input: &str) -> IResult<&str, ()> {
-//     let (input, _) = nom::multi::many0(nom::branch::alt((whitespace, peol_comment)))(input)?;
-//     Ok((input, ()))
-// }
+fn whitespace_and_comments(input: &str) -> IResult<&str, ()> {
+    value((), many0(alt((whitespace, peol_comment))))(input)
+}
 
 fn instruction_with_optional_comment<'a>(
     opcodes: &'a Opcodes,
@@ -203,9 +202,9 @@ fn instruction_with_optional_comment<'a>(
 
 fn instructions<'a>(input: &'a str, opcodes: &'a Opcodes) -> IResult<&'a str, Vec<Instruction>> {
     let (input, instructions) = nom::multi::many0(delimited(
-        multispace0,
+        whitespace_and_comments,
         terminated(instruction_with_optional_comment(opcodes), end_of_line),
-        multispace0,
+        whitespace_and_comments,
     ))(input)?;
     Ok((input, instructions))
 }
@@ -411,22 +410,32 @@ mod tests {
         )
     }
 
-    // #[test]
-    // fn test_instructions_with_comment_lines() {
-    //     let opcodes = Opcodes::new();
-    //     assert_eq!(
-    //         instructions("call 10\n# this is a comment \nr1 = add r2 r3", &opcodes),
-    //         Ok((
-    //             "",
-    //             vec![
-    //                 Instruction::Call(CallId { identifier: 10 }),
-    //                 Instruction::Add(Register {
-    //                     rd: 1,
-    //                     rs1: 2,
-    //                     rs2: 3
-    //                 })
-    //             ]
-    //         ))
-    //     )
-    // }
+    #[test]
+    fn test_whitespace_and_comments() {
+        assert_eq!(whitespace_and_comments(""), Ok(("", ())));
+        assert_eq!(whitespace_and_comments(" "), Ok(("", ())));
+        assert_eq!(whitespace_and_comments(" \n "), Ok(("", ())));
+        assert_eq!(whitespace_and_comments(" # foo"), Ok(("", ())));
+        assert_eq!(whitespace_and_comments(" # foo\n # bar"), Ok(("", ())));
+        assert_eq!(whitespace_and_comments(" yes yes"), Ok(("yes yes", ())));
+    }
+
+    #[test]
+    fn test_instructions_with_comment_lines() {
+        let opcodes = Opcodes::new();
+        assert_eq!(
+            instructions("call 10\n# this is a comment \nr1 = add r2 r3", &opcodes),
+            Ok((
+                "",
+                vec![
+                    Instruction::Call(CallId { identifier: 10 }),
+                    Instruction::Add(Register {
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 3
+                    })
+                ]
+            ))
+        )
+    }
 }
