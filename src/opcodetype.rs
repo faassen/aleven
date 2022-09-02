@@ -47,7 +47,7 @@ impl From<Opcode> for OpcodeType {
             Add | Sub | Slt | Sltu | And | Or | Xor | Sll | Srl | Sra => OpcodeType::Register,
             Lh | Lbu | Lb => OpcodeType::Load,
             Sh | Sb => OpcodeType::Store,
-            Beq => OpcodeType::Branch,
+            Beq | Bne => OpcodeType::Branch,
             Target => OpcodeType::BranchTarget,
             Call => OpcodeType::Call,
         }
@@ -171,7 +171,7 @@ impl<'a> From<&'a Instruction> for InstructionValue<'a> {
             }
             Lh(load) | Lbu(load) | Lb(load) => InstructionValue::Load(load),
             Sh(store) | Sb(store) => InstructionValue::Store(store),
-            Beq(branch) => InstructionValue::Branch(branch),
+            Beq(branch) | Bne(branch) => InstructionValue::Branch(branch),
             Target(branch_target) => InstructionValue::BranchTarget(branch_target),
             Call(call_id) => InstructionValue::Call(call_id),
         }

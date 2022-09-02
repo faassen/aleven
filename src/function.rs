@@ -80,6 +80,7 @@ impl Function {
 
         for (index, instruction) in instructions.iter().enumerate() {
             match instruction {
+                // XXX horrible duplication, need to refactor but how?
                 Instruction::Beq(branch) => {
                     let target = branch.target;
                     let target_index = targets.get(&target);
@@ -89,6 +90,21 @@ impl Function {
                         }
                     } else if let Some(unique_target_index) = unique_target {
                         result.push(Instruction::Beq(Branch {
+                            rs1: branch.rs1,
+                            rs2: branch.rs2,
+                            target: unique_target_index,
+                        }))
+                    }
+                }
+                Instruction::Bne(branch) => {
+                    let target = branch.target;
+                    let target_index = targets.get(&target);
+                    if let Some(target_index) = target_index {
+                        if *target_index > index {
+                            result.push(instruction.clone());
+                        }
+                    } else if let Some(unique_target_index) = unique_target {
+                        result.push(Instruction::Bne(Branch {
                             rs1: branch.rs1,
                             rs2: branch.rs2,
                             target: unique_target_index,

@@ -1,4 +1,5 @@
 use crate::function::Function;
+use crate::opcodetype::InstructionValue;
 use byteorder::{ByteOrder, LittleEndian};
 use rustc_hash::FxHashMap;
 use strum_macros::{Display, EnumDiscriminants, EnumIter};
@@ -77,6 +78,7 @@ pub enum Instruction {
     Sh(Store),
     Sb(Store),
     Beq(Branch),
+    Bne(Branch),
     Target(BranchTarget),
     Call(CallId),
 }
@@ -381,6 +383,18 @@ impl Instruction {
                 let index = targets.get(&target);
                 if let Some(index) = index {
                     if processor.registers[rs1 as usize] == processor.registers[rs2 as usize] {
+                        processor.pc = *index;
+                        processor.jumped = true;
+                    }
+                }
+            }
+            Instruction::Bne(branch) => {
+                let rs1 = branch.rs1;
+                let rs2 = branch.rs2;
+                let target = branch.target;
+                let index = targets.get(&target);
+                if let Some(index) = index {
+                    if processor.registers[rs1 as usize] != processor.registers[rs2 as usize] {
                         processor.pc = *index;
                         processor.jumped = true;
                     }

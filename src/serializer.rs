@@ -48,6 +48,7 @@ impl Opcode {
             Sh => Instruction::Sh(Store::deserialize(values)),
             Sb => Instruction::Sb(Store::deserialize(values)),
             Beq => Instruction::Beq(Branch::deserialize(values)),
+            Bne => Instruction::Bne(Branch::deserialize(values)),
             Target => Instruction::Target(BranchTarget::deserialize(values)),
             Call => Instruction::Call(CallId::deserialize(values)),
         }

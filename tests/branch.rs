@@ -181,3 +181,53 @@ fn test_addi_after_beq(runner: RunnerFunc) {
     let mut memory = [0u8; 64];
     runner(&instructions, &mut memory);
 }
+
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_bne_simple(runner: RunnerFunc) {
+    let instructions = [
+        Instruction::Lb(Load {
+            offset: 0,
+            rs: 1,
+            rd: 2,
+        }),
+        Instruction::Lb(Load {
+            offset: 1,
+            rs: 1,
+            rd: 3,
+        }),
+        Instruction::Bne(Branch {
+            rs1: 2,
+            rs2: 3,
+            target: 1,
+        }),
+        Instruction::Lb(Load {
+            offset: 2,
+            rs: 1,
+            rd: 4,
+        }),
+        Instruction::Sb(Store {
+            offset: 10,
+            rs: 4,
+            rd: 5, // defaults to 0
+        }),
+        Instruction::Target(BranchTarget { identifier: 1 }),
+    ];
+
+    let mut memory = [0u8; 64];
+    memory[0] = 10;
+    memory[1] = 15;
+    memory[2] = 30;
+
+    runner(&instructions, &mut memory);
+    // branch happened, so no store
+    assert_eq!(memory[10], 0);
+
+    let mut memory = [0u8; 64];
+    memory[0] = 10;
+    memory[1] = 10;
+    memory[2] = 30;
+
+    runner(&instructions, &mut memory);
+    // branch happened, so store of 30
+    assert_eq!(memory[10], 30);
+}

@@ -229,6 +229,10 @@ impl<'ctx> CodeGen<'ctx> {
                     self.compile_beq(registers, branch, next_instr_block, &targets);
                     branched = true;
                 }
+                Instruction::Bne(branch) => {
+                    self.compile_bne(registers, branch, next_instr_block, &targets);
+                    branched = true;
+                }
                 Instruction::Target(_target) => {
                     // do nothing
                 }
@@ -719,6 +723,32 @@ impl<'ctx> CodeGen<'ctx> {
 
         let cond = self.builder.build_int_compare(
             IntPredicate::EQ,
+            rs1_value.into_int_value(),
+            rs2_value.into_int_value(),
+            "beq",
+        );
+        if let Some(target) = targets.get(&branch.target) {
+            self.builder
+                .build_conditional_branch(cond, *target, next_block);
+        } else {
+            self.builder.build_unconditional_branch(next_block);
+        }
+    }
+
+    fn compile_bne(
+        &self,
+        registers: &Registers,
+        branch: &Branch,
+        next_block: BasicBlock,
+        targets: &FxHashMap<u8, BasicBlock>,
+    ) {
+        let rs1 = registers.get(branch.rs1);
+        let rs1_value = self.builder.build_load(rs1, "rs1_value");
+        let rs2 = registers.get(branch.rs2);
+        let rs2_value = self.builder.build_load(rs2, "rs2_value");
+
+        let cond = self.builder.build_int_compare(
+            IntPredicate::NE,
             rs1_value.into_int_value(),
             rs2_value.into_int_value(),
             "beq",
