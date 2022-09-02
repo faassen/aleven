@@ -53,7 +53,7 @@ fn test_beq_simple(runner: RunnerFunc) {
 }
 
 #[parameterized(runner={run_llvm_func, run_interpreter_func})]
-fn test_beq_nonexistent_target_means_nop(runner: RunnerFunc) {
+fn test_beq_nonexistent_target_means_target_is_end(runner: RunnerFunc) {
     let instructions = [
         Instruction::Lb(Load {
             offset: 0,
@@ -89,15 +89,16 @@ fn test_beq_nonexistent_target_means_nop(runner: RunnerFunc) {
     memory[2] = 30;
 
     runner(&instructions, &mut memory);
-    // since noop, branch happened
-    assert_eq!(memory[10], 30);
+    // branch happened, so no store
+    assert_eq!(memory[10], 0);
 
-    // in the other case, it's the same noop, so store happens
     let mut memory = [0u8; 64];
     memory[0] = 10;
     memory[1] = 20;
     memory[2] = 30;
+
     runner(&instructions, &mut memory);
+    // branch happened, so store of 30
     assert_eq!(memory[10], 30);
 }
 

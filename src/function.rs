@@ -1,5 +1,5 @@
 use crate::lang::Instruction;
-use crate::lang::Processor;
+use crate::lang::{Branch, BranchTarget, Processor};
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
@@ -15,7 +15,7 @@ pub struct Function {
 impl Function {
     pub fn new(instructions: &[Instruction]) -> Function {
         Function {
-            instructions: Function::cleanup(instructions),
+            instructions: Function::cleanup_branches(instructions),
         }
     }
 
@@ -69,11 +69,14 @@ impl Function {
             .collect::<FxHashSet<u16>>()
     }
 
-    fn cleanup(instructions: &[Instruction]) -> Vec<Instruction> {
-        // clean up program by removing branching instructions that don't have
-        // targets or point to a target that's earlier
+    fn cleanup_branches(instructions: &[Instruction]) -> Vec<Instruction> {
+        // clean up program by removing branching that point to a target that's earlier
+        // for branches that don't have a target, a synthetic target at the end is
+        // jumped to instead
         let targets = Function::targets(instructions);
         let mut result = Vec::new();
+
+        let unique_target = Self::get_unique_target(&targets);
 
         for (index, instruction) in instructions.iter().enumerate() {
             match instruction {
@@ -84,12 +87,23 @@ impl Function {
                         if *target_index > index {
                             result.push(instruction.clone());
                         }
+                    } else if let Some(unique_target_index) = unique_target {
+                        result.push(Instruction::Beq(Branch {
+                            rs1: branch.rs1,
+                            rs2: branch.rs2,
+                            target: unique_target_index,
+                        }))
                     }
                 }
                 _ => {
                     result.push(instruction.clone());
                 }
             }
+        }
+        if let Some(unique_target_index) = unique_target {
+            result.push(Instruction::Target(BranchTarget {
+                identifier: unique_target_index,
+            }));
         }
         result
     }
@@ -123,5 +137,18 @@ impl Function {
             }
         }
         targets
+    }
+
+    fn get_unique_target(targets: &FxHashMap<u8, usize>) -> Option<u8> {
+        let mut index: u8 = 0;
+        loop {
+            if targets.get(&index).is_none() {
+                return Some(index);
+            }
+            if index == 255 {
+                return None;
+            }
+            index += 1;
+        }
     }
 }

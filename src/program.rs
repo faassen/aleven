@@ -1,6 +1,6 @@
 use crate::cache::FunctionValueCache;
 use crate::function::Function;
-use crate::lang::{Instruction, Processor};
+use crate::lang::{BranchTarget, Instruction, Processor};
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
@@ -85,7 +85,12 @@ mod tests {
     fn test_call_ids_no_recursion() {
         let program = Program::new(&[&[Instruction::Call(CallId { identifier: 0 })]]);
 
-        assert_eq!(program.functions, vec![Function::new(&[])]);
+        assert_eq!(
+            program.functions,
+            vec![Function::new(&[Instruction::Target(BranchTarget {
+                identifier: 0
+            })])]
+        );
     }
 
     #[test]
@@ -98,8 +103,11 @@ mod tests {
         assert_eq!(
             program.functions,
             vec![
-                Function::new(&[Instruction::Call(CallId { identifier: 1 })]),
-                Function::new(&[])
+                Function::new(&[
+                    Instruction::Call(CallId { identifier: 1 }),
+                    Instruction::Target(BranchTarget { identifier: 0 })
+                ]),
+                Function::new(&[Instruction::Target(BranchTarget { identifier: 0 })]),
             ]
         );
     }
@@ -124,14 +132,18 @@ mod tests {
             vec![
                 Function::new(&[
                     Instruction::Call(CallId { identifier: 1 }),
-                    Instruction::Call(CallId { identifier: 2 })
+                    Instruction::Call(CallId { identifier: 2 }),
+                    Instruction::Target(BranchTarget { identifier: 0 })
                 ]),
-                Function::new(&[]),
-                Function::new(&[Instruction::Addi(Immediate {
-                    rs: 0,
-                    rd: 0,
-                    value: 1,
-                })])
+                Function::new(&[Instruction::Target(BranchTarget { identifier: 0 })]),
+                Function::new(&[
+                    Instruction::Addi(Immediate {
+                        rs: 0,
+                        rd: 0,
+                        value: 1,
+                    },),
+                    Instruction::Target(BranchTarget { identifier: 0 })
+                ])
             ]
         );
     }
@@ -140,6 +152,11 @@ mod tests {
     fn test_call_ids_no_unknown_target() {
         let program = Program::new(&[&[Instruction::Call(CallId { identifier: 100 })]]);
 
-        assert_eq!(program.functions, vec![Function::new(&[])]);
+        assert_eq!(
+            program.functions,
+            vec![Function::new(&[Instruction::Target(BranchTarget {
+                identifier: 0
+            })])]
+        );
     }
 }
