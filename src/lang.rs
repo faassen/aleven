@@ -113,6 +113,7 @@ pub enum BranchOpcode {
     Beq = BRANCH_OPCODE_START as isize,
     Bne,
     Blt,
+    Bltu,
 }
 
 const BRANCH_TARGET_OPCODE_START: usize = BRANCH_OPCODE_START + BranchOpcode::COUNT;
@@ -506,6 +507,17 @@ impl Instruction {
                         let index = targets.get(&target);
                         if let Some(index) = index {
                             if processor.registers[rs1 as usize] < processor.registers[rs2 as usize]
+                            {
+                                processor.pc = *index;
+                                processor.jumped = true;
+                            }
+                        }
+                    }
+                    Bltu => {
+                        let index = targets.get(&target);
+                        if let Some(index) = index {
+                            if (processor.registers[rs1 as usize] as u16)
+                                < (processor.registers[rs2 as usize] as u16)
                             {
                                 processor.pc = *index;
                                 processor.jumped = true;

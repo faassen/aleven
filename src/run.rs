@@ -9,10 +9,11 @@ pub type RunnerFunc = fn(&[Instruction], &mut [u8]);
 pub type RunnerProgram = fn(&[&[Instruction]], &mut [u8]);
 
 pub fn run_llvm_func(instructions: &[Instruction], memory: &mut [u8]) {
-    let function = Function::new(instructions);
+    let program = Program::from_instructions(instructions);
     let context = Context::create();
     let codegen = CodeGen::new(&context);
-    let func = function.compile_as_program(&codegen, memory.len() as u16);
+    let mut cache = FunctionValueCache::new();
+    let func = program.compile(0, &codegen, memory.len() as u16, &mut cache);
     codegen.module.verify().unwrap();
     Function::run(&func, memory);
 }

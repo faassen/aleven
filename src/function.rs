@@ -118,7 +118,7 @@ impl Function {
                     opcode: CallIdOpcode::Call,
                     identifier,
                 }) => {
-                    if !seen.contains(&identifier) {
+                    if !seen.contains(identifier) {
                         let identifier = *identifier as usize;
                         if identifier >= functions.len() {
                             continue;
