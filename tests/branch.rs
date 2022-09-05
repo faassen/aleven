@@ -106,8 +106,8 @@ fn test_addi_after_beq(runner: RunnerFunc) {
         "
     r24 = lh r24 8728
     beq r31 r31 255
-    r24 = addi r24 6168 
-    target = 255
+    r24 = addi r24 6168
+    target 255
     r24 = addi r24 0
     ",
     )
@@ -124,6 +124,39 @@ fn test_bne_simple(runner: RunnerFunc) {
     r2 = lb r1 0
     r3 = lb r1 1
     bne r2 r3 1
+    r4 = lb r1 2
+    sb r5 10 = r4
+    target 1
+    ",
+    )
+    .unwrap();
+
+    let mut memory = [0u8; 64];
+    memory[0] = 10;
+    memory[1] = 15;
+    memory[2] = 30;
+
+    runner(&instructions, &mut memory);
+    // branch happened, so no store
+    assert_eq!(memory[10], 0);
+
+    let mut memory = [0u8; 64];
+    memory[0] = 10;
+    memory[1] = 10;
+    memory[2] = 30;
+
+    runner(&instructions, &mut memory);
+    // branch happened, so store of 30
+    assert_eq!(memory[10], 30);
+}
+
+#[parameterized(runner={run_llvm_func, run_interpreter_func})]
+fn test_blt_simple(runner: RunnerFunc) {
+    let instructions = parse(
+        "
+    r2 = lb r1 0
+    r3 = lb r1 1
+    blt r2 r3 1
     r4 = lb r1 2
     sb r5 10 = r4
     target 1

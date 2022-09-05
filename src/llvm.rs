@@ -259,6 +259,10 @@ impl<'ctx> CodeGen<'ctx> {
                             self.compile_bne(registers, branch, next_instr_block, &targets);
                             branched = true;
                         }
+                        Blt => {
+                            self.compile_blt(registers, branch, next_instr_block, &targets);
+                            branched = true;
+                        }
                     }
                 }
                 Instruction::BranchTarget(branch_target) => {
@@ -796,6 +800,16 @@ impl<'ctx> CodeGen<'ctx> {
         targets: &FxHashMap<u8, BasicBlock>,
     ) {
         self.compile_compare(registers, branch, next_block, targets, IntPredicate::NE);
+    }
+
+    fn compile_blt(
+        &self,
+        registers: &Registers,
+        branch: &Branch,
+        next_block: BasicBlock,
+        targets: &FxHashMap<u8, BasicBlock>,
+    ) {
+        self.compile_compare(registers, branch, next_block, targets, IntPredicate::SLT);
     }
 
     fn compile_call(

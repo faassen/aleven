@@ -172,7 +172,7 @@ fn test_bug14() {
     let instructions = parse(
         "
       r22 = addi r22 5632
-      r22 = slli r22 5887 
+      r22 = slli r22 5887
       r22 = sub r16 r22
       sh r22 5654 = r22
     ",
