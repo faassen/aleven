@@ -1,6 +1,9 @@
 use crate::cache::FunctionValueCache;
 use crate::function::Function;
-use crate::lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
+use crate::lang::{
+    Branch, BranchOpcode, BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Immediate,
+    ImmediateOpcode, Instruction, Load, LoadOpcode, Register, RegisterOpcode, Store, StoreOpcode,
+};
 use crate::llvmasm::save_asm;
 use crate::program::Program;
 use inkwell::basic_block::BasicBlock;
@@ -191,53 +194,88 @@ impl<'ctx> CodeGen<'ctx> {
             next_instr_block = blocks_iter.next().unwrap().1;
             let mut branched = false;
             match instruction {
-                Instruction::Addi(immediate) => self.compile_addi(registers, immediate),
-                Instruction::Slti(immediate) => self.compile_slti(registers, immediate),
-                Instruction::Sltiu(immediate) => self.compile_sltiu(registers, immediate),
-                Instruction::Andi(immediate) => self.compile_andi(registers, immediate),
-                Instruction::Ori(immediate) => self.compile_ori(registers, immediate),
-                Instruction::Xori(immediate) => self.compile_xori(registers, immediate),
-                Instruction::Slli(immediate) => self.compile_slli(registers, immediate),
-                Instruction::Srli(immediate) => self.compile_srli(registers, immediate),
-                Instruction::Srai(immediate) => self.compile_srai(registers, immediate),
-                Instruction::Add(register) => self.compile_add(registers, register),
-                Instruction::Sub(register) => self.compile_sub(registers, register),
-                Instruction::Slt(register) => self.compile_slt(registers, register),
-                Instruction::Sltu(register) => self.compile_sltu(registers, register),
-                Instruction::And(register) => self.compile_and(registers, register),
-                Instruction::Or(register) => self.compile_or(registers, register),
-                Instruction::Xor(register) => self.compile_xor(registers, register),
-                Instruction::Sll(register) => self.compile_sll(registers, register),
-                Instruction::Srl(register) => self.compile_srl(registers, register),
-                Instruction::Sra(register) => self.compile_sra(registers, register),
-                Instruction::Lb(load) => {
-                    self.compile_lb(registers, memory_ptr, load, memory_size, function);
+                Instruction::Immediate(immediate) => {
+                    use ImmediateOpcode::*;
+                    match immediate.opcode {
+                        Addi => self.compile_addi(registers, immediate),
+                        Slti => self.compile_slti(registers, immediate),
+                        Sltiu => self.compile_sltiu(registers, immediate),
+                        Andi => self.compile_andi(registers, immediate),
+                        Ori => self.compile_ori(registers, immediate),
+                        Xori => self.compile_xori(registers, immediate),
+                        Slli => self.compile_slli(registers, immediate),
+                        Srli => self.compile_srli(registers, immediate),
+                        Srai => self.compile_srai(registers, immediate),
+                    }
                 }
-                Instruction::Lbu(load) => {
-                    self.compile_lbu(registers, memory_ptr, load, memory_size, function);
+                Instruction::Register(register) => {
+                    use RegisterOpcode::*;
+                    match register.opcode {
+                        Add => self.compile_add(registers, register),
+                        Sub => self.compile_sub(registers, register),
+                        Slt => self.compile_slt(registers, register),
+                        Sltu => self.compile_sltu(registers, register),
+                        And => self.compile_and(registers, register),
+                        Or => self.compile_or(registers, register),
+                        Xor => self.compile_xor(registers, register),
+                        Sll => self.compile_sll(registers, register),
+                        Srl => self.compile_srl(registers, register),
+                        Sra => self.compile_sra(registers, register),
+                    }
                 }
-                Instruction::Sb(store) => {
-                    self.compile_sb(registers, memory_ptr, store, memory_size, function);
+                Instruction::Load(load) => {
+                    use LoadOpcode::*;
+                    match load.opcode {
+                        Lb => {
+                            self.compile_lb(registers, memory_ptr, load, memory_size, function);
+                        }
+                        Lbu => {
+                            self.compile_lbu(registers, memory_ptr, load, memory_size, function);
+                        }
+                        Lh => {
+                            self.compile_lh(registers, memory_ptr, load, memory_size, function);
+                        }
+                    }
                 }
-                Instruction::Lh(load) => {
-                    self.compile_lh(registers, memory_ptr, load, memory_size, function);
+                Instruction::Store(store) => {
+                    use StoreOpcode::*;
+                    match store.opcode {
+                        Sb => {
+                            self.compile_sb(registers, memory_ptr, store, memory_size, function);
+                        }
+                        Sh => {
+                            self.compile_sh(registers, memory_ptr, store, memory_size, function);
+                        }
+                    }
                 }
-                Instruction::Sh(store) => {
-                    self.compile_sh(registers, memory_ptr, store, memory_size, function);
+                Instruction::Branch(branch) => {
+                    use BranchOpcode::*;
+                    match branch.opcode {
+                        Beq => {
+                            self.compile_beq(registers, branch, next_instr_block, &targets);
+                            branched = true;
+                        }
+                        Bne => {
+                            self.compile_bne(registers, branch, next_instr_block, &targets);
+                            branched = true;
+                        }
+                    }
                 }
-                Instruction::Beq(branch) => {
-                    self.compile_beq(registers, branch, next_instr_block, &targets);
-                    branched = true;
+                Instruction::BranchTarget(branch_target) => {
+                    use BranchTargetOpcode::*;
+                    match branch_target.opcode {
+                        Target => {
+                            // do nothing
+                        }
+                    }
                 }
-                Instruction::Bne(branch) => {
-                    self.compile_bne(registers, branch, next_instr_block, &targets);
-                    branched = true;
-                }
-                Instruction::Target(_target) => {
-                    // do nothing
-                }
-                Instruction::Call(call) => {
-                    self.compile_call(call, memory_ptr, registers_ptr, functions);
+                Instruction::CallId(call_id) => {
+                    use CallIdOpcode::*;
+                    match call_id.opcode {
+                        Call => {
+                            self.compile_call(call_id, memory_ptr, registers_ptr, functions);
+                        }
+                    }
                 }
             }
             if !branched {
@@ -263,8 +301,12 @@ impl<'ctx> CodeGen<'ctx> {
 
             blocks.push((index, instr_block));
 
-            if let Instruction::Target(target) = instruction {
-                targets.insert(target.identifier, instr_block);
+            if let Instruction::BranchTarget(BranchTarget {
+                opcode: _,
+                identifier,
+            }) = instruction
+            {
+                targets.insert(*identifier, instr_block);
             }
         }
         // add one more block for the end of the program
@@ -785,28 +827,36 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     memory[0] = 11;
 
     let main_instructions = vec![
-        Instruction::Lb(Load {
+        Instruction::Load(Load {
+            opcode: LoadOpcode::Lb,
             offset: 0,
             rs: 31,
             rd: 1,
         }),
-        Instruction::Lb(Load {
+        Instruction::Load(Load {
+            opcode: LoadOpcode::Lb,
             offset: 1,
             rs: 31,
             rd: 2,
         }),
-        Instruction::Lb(Load {
+        Instruction::Load(Load {
+            opcode: LoadOpcode::Lb,
             offset: 2,
             rs: 31,
             rd: 3,
         }),
-        Instruction::Lb(Load {
+        Instruction::Load(Load {
+            opcode: LoadOpcode::Lb,
             offset: 3,
             rs: 31,
             rd: 4,
         }),
-        Instruction::Call(CallId { identifier: 1 }),
-        Instruction::Sb(Store {
+        Instruction::CallId(CallId {
+            opcode: CallIdOpcode::Call,
+            identifier: 1,
+        }),
+        Instruction::Store(Store {
+            opcode: StoreOpcode::Sb,
             offset: 13,
             rs: 4,
             rd: 31,
@@ -814,20 +864,26 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     ];
 
     let sub_instructions = vec![
-        Instruction::Sb(Store {
+        Instruction::Store(Store {
+            opcode: StoreOpcode::Sb,
             offset: 10,
             rs: 1,
             rd: 31,
         }),
-        Instruction::Call(CallId { identifier: 2 }),
-        Instruction::Sb(Store {
+        Instruction::CallId(CallId {
+            opcode: CallIdOpcode::Call,
+            identifier: 2,
+        }),
+        Instruction::Store(Store {
+            opcode: StoreOpcode::Sb,
             offset: 12,
             rs: 3,
             rd: 31,
         }),
     ];
 
-    let sub_sub_instructions = vec![Instruction::Sb(Store {
+    let sub_sub_instructions = vec![Instruction::Store(Store {
+        opcode: StoreOpcode::Sb,
         offset: 11,
         rs: 2,
         rd: 31,

@@ -1,5 +1,5 @@
 use crate::lang::Instruction;
-use crate::lang::{Branch, BranchTarget, Processor};
+use crate::lang::{Branch, BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Processor};
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
@@ -63,7 +63,10 @@ impl Function {
         self.instructions
             .iter()
             .filter_map(|instruction| match instruction {
-                Instruction::Call(call) => Some(call.identifier),
+                Instruction::CallId(CallId {
+                    opcode: CallIdOpcode::Call,
+                    identifier,
+                }) => Some(*identifier),
                 _ => None,
             })
             .collect::<FxHashSet<u16>>()
@@ -80,8 +83,7 @@ impl Function {
 
         for (index, instruction) in instructions.iter().enumerate() {
             match instruction {
-                // XXX horrible duplication, need to refactor but how?
-                Instruction::Beq(branch) => {
+                Instruction::Branch(branch) => {
                     let target = branch.target;
                     let target_index = targets.get(&target);
                     if let Some(target_index) = target_index {
@@ -89,26 +91,9 @@ impl Function {
                             result.push(instruction.clone());
                         }
                     } else if let Some(unique_target_index) = unique_target {
-                        result.push(Instruction::Beq(Branch {
-                            rs1: branch.rs1,
-                            rs2: branch.rs2,
-                            target: unique_target_index,
-                        }))
-                    }
-                }
-                Instruction::Bne(branch) => {
-                    let target = branch.target;
-                    let target_index = targets.get(&target);
-                    if let Some(target_index) = target_index {
-                        if *target_index > index {
-                            result.push(instruction.clone());
-                        }
-                    } else if let Some(unique_target_index) = unique_target {
-                        result.push(Instruction::Bne(Branch {
-                            rs1: branch.rs1,
-                            rs2: branch.rs2,
-                            target: unique_target_index,
-                        }))
+                        let mut retargeted_branch = branch.clone();
+                        retargeted_branch.target = unique_target_index;
+                        result.push(Instruction::Branch(retargeted_branch));
                     }
                 }
                 _ => {
@@ -117,7 +102,8 @@ impl Function {
             }
         }
         if let Some(unique_target_index) = unique_target {
-            result.push(Instruction::Target(BranchTarget {
+            result.push(Instruction::BranchTarget(BranchTarget {
+                opcode: BranchTargetOpcode::Target,
                 identifier: unique_target_index,
             }));
         }
@@ -128,9 +114,12 @@ impl Function {
         let mut new_instructions = Vec::new();
         for instruction in self.instructions.iter() {
             match instruction {
-                Instruction::Call(call) => {
-                    if !seen.contains(&call.identifier) {
-                        let identifier = call.identifier as usize;
+                Instruction::CallId(CallId {
+                    opcode: CallIdOpcode::Call,
+                    identifier,
+                }) => {
+                    if !seen.contains(&identifier) {
+                        let identifier = *identifier as usize;
                         if identifier >= functions.len() {
                             continue;
                         }
@@ -148,8 +137,12 @@ impl Function {
     fn targets(instructions: &[Instruction]) -> FxHashMap<u8, usize> {
         let mut targets = FxHashMap::default();
         for (index, instruction) in instructions.iter().enumerate() {
-            if let Instruction::Target(target) = instruction {
-                targets.insert(target.identifier, index);
+            if let Instruction::BranchTarget(BranchTarget {
+                opcode: _,
+                identifier,
+            }) = instruction
+            {
+                targets.insert(*identifier, index);
             }
         }
         targets

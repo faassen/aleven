@@ -1,23 +1,17 @@
+use aleven::parse;
 use aleven::run::{run_interpreter_program, run_llvm_program, RunnerProgram};
-use aleven::{CallId, Instruction, Load, Store};
 use parameterized::parameterized;
 
 #[parameterized(runner={run_llvm_program, run_interpreter_program})]
 fn test_call(runner: RunnerProgram) {
-    let main_instructions = [
-        Instruction::Lb(Load {
-            offset: 0,
-            rs: 1,
-            rd: 2,
-        }),
-        Instruction::Call(CallId { identifier: 1 }),
-    ];
+    let main_instructions = parse(
+        "
+    r2 = lb r1 0
+    call 1",
+    )
+    .unwrap();
+    let sub_instructions = parse("sb r3 10 = r2").unwrap();
 
-    let sub_instructions = [Instruction::Sb(Store {
-        offset: 10,
-        rs: 2,
-        rd: 3, // defaults to 0
-    })];
     let mut memory = [0u8; 64];
     memory[0] = 11;
 
@@ -28,54 +22,26 @@ fn test_call(runner: RunnerProgram) {
 
 #[parameterized(runner={run_llvm_program, run_interpreter_program})]
 fn test_nested_call(runner: RunnerProgram) {
-    let main_instructions = [
-        Instruction::Lb(Load {
-            offset: 0,
-            rs: 31,
-            rd: 1,
-        }),
-        Instruction::Lb(Load {
-            offset: 1,
-            rs: 31,
-            rd: 2,
-        }),
-        Instruction::Lb(Load {
-            offset: 2,
-            rs: 31,
-            rd: 3,
-        }),
-        Instruction::Lb(Load {
-            offset: 3,
-            rs: 31,
-            rd: 4,
-        }),
-        Instruction::Call(CallId { identifier: 1 }),
-        Instruction::Sb(Store {
-            offset: 13,
-            rs: 4,
-            rd: 31,
-        }),
-    ];
+    let main_instructions = parse(
+        "
+    r1 = lb r31 0
+    r2 = lb r31 1
+    r3 = lb r31 2
+    r4 = lb r31 3
+    call 1
+    sb r31 13 = r4",
+    )
+    .unwrap();
 
-    let sub_instructions = [
-        Instruction::Sb(Store {
-            offset: 10,
-            rs: 1,
-            rd: 31,
-        }),
-        Instruction::Call(CallId { identifier: 2 }),
-        Instruction::Sb(Store {
-            offset: 12,
-            rs: 3,
-            rd: 31,
-        }),
-    ];
+    let sub_instructions = parse(
+        "
+    sb r31 10 = r1
+    call 2
+    sb r31 12 = r3",
+    )
+    .unwrap();
 
-    let sub_sub_instructions = [Instruction::Sb(Store {
-        offset: 11,
-        rs: 2,
-        rd: 31,
-    })];
+    let sub_sub_instructions = parse("sb r31 11 = r2").unwrap();
 
     let mut memory = [0u8; 64];
     memory[0] = 11;
@@ -96,16 +62,14 @@ fn test_nested_call(runner: RunnerProgram) {
 
 #[parameterized(runner={run_interpreter_program})]
 fn test_no_recursion_basic(runner: RunnerProgram) {
-    let main_instructions = [Instruction::Call(CallId { identifier: 0 })];
-
+    let main_instructions = parse("call 0").unwrap();
     let mut memory = [0u8; 64];
     runner(&[&main_instructions], &mut memory);
 }
 
 #[parameterized(runner={run_interpreter_program})]
 fn test_no_calls_into_unknown(runner: RunnerProgram) {
-    let main_instructions = [Instruction::Call(CallId { identifier: 1 })];
-
+    let main_instructions = parse("call 1").unwrap();
     let mut memory = [0u8; 64];
     runner(&[&main_instructions], &mut memory);
 }

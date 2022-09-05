@@ -79,15 +79,19 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::{CallId, Immediate};
+    use crate::lang::{BranchTargetOpcode, CallId, CallIdOpcode, Immediate, ImmediateOpcode};
 
     #[test]
     fn test_call_ids_no_recursion() {
-        let program = Program::new(&[&[Instruction::Call(CallId { identifier: 0 })]]);
+        let program = Program::new(&[&[Instruction::CallId(CallId {
+            opcode: CallIdOpcode::Call,
+            identifier: 0,
+        })]]);
 
         assert_eq!(
             program.functions,
-            vec![Function::new(&[Instruction::Target(BranchTarget {
+            vec![Function::new(&[Instruction::BranchTarget(BranchTarget {
+                opcode: BranchTargetOpcode::Target,
                 identifier: 0
             })])]
         );
@@ -96,18 +100,33 @@ mod tests {
     #[test]
     fn test_call_ids_no_indirect_recursion() {
         let program = Program::new(&[
-            &[Instruction::Call(CallId { identifier: 1 })],
-            &[Instruction::Call(CallId { identifier: 0 })],
+            &[Instruction::CallId(CallId {
+                opcode: CallIdOpcode::Call,
+                identifier: 1,
+            })],
+            &[Instruction::CallId(CallId {
+                opcode: CallIdOpcode::Call,
+                identifier: 0,
+            })],
         ]);
 
         assert_eq!(
             program.functions,
             vec![
                 Function::new(&[
-                    Instruction::Call(CallId { identifier: 1 }),
-                    Instruction::Target(BranchTarget { identifier: 0 })
+                    Instruction::CallId(CallId {
+                        opcode: CallIdOpcode::Call,
+                        identifier: 1
+                    }),
+                    Instruction::BranchTarget(BranchTarget {
+                        opcode: BranchTargetOpcode::Target,
+                        identifier: 0
+                    })
                 ]),
-                Function::new(&[Instruction::Target(BranchTarget { identifier: 0 })]),
+                Function::new(&[Instruction::BranchTarget(BranchTarget {
+                    opcode: BranchTargetOpcode::Target,
+                    identifier: 0
+                })]),
             ]
         );
     }
@@ -116,11 +135,21 @@ mod tests {
     fn test_call_ids_no_indirect_multiple_calls() {
         let program = Program::new(&[
             &[
-                Instruction::Call(CallId { identifier: 1 }),
-                Instruction::Call(CallId { identifier: 2 }),
+                Instruction::CallId(CallId {
+                    opcode: CallIdOpcode::Call,
+                    identifier: 1,
+                }),
+                Instruction::CallId(CallId {
+                    opcode: CallIdOpcode::Call,
+                    identifier: 2,
+                }),
             ],
-            &[Instruction::Call(CallId { identifier: 0 })],
-            &[Instruction::Addi(Immediate {
+            &[Instruction::CallId(CallId {
+                opcode: CallIdOpcode::Call,
+                identifier: 0,
+            })],
+            &[Instruction::Immediate(Immediate {
+                opcode: ImmediateOpcode::Addi,
                 rs: 0,
                 rd: 0,
                 value: 1,
@@ -131,18 +160,34 @@ mod tests {
             program.functions,
             vec![
                 Function::new(&[
-                    Instruction::Call(CallId { identifier: 1 }),
-                    Instruction::Call(CallId { identifier: 2 }),
-                    Instruction::Target(BranchTarget { identifier: 0 })
+                    Instruction::CallId(CallId {
+                        opcode: CallIdOpcode::Call,
+                        identifier: 1
+                    }),
+                    Instruction::CallId(CallId {
+                        opcode: CallIdOpcode::Call,
+                        identifier: 2
+                    }),
+                    Instruction::BranchTarget(BranchTarget {
+                        opcode: BranchTargetOpcode::Target,
+                        identifier: 0
+                    })
                 ]),
-                Function::new(&[Instruction::Target(BranchTarget { identifier: 0 })]),
+                Function::new(&[Instruction::BranchTarget(BranchTarget {
+                    opcode: BranchTargetOpcode::Target,
+                    identifier: 0
+                })]),
                 Function::new(&[
-                    Instruction::Addi(Immediate {
+                    Instruction::Immediate(Immediate {
+                        opcode: ImmediateOpcode::Addi,
                         rs: 0,
                         rd: 0,
                         value: 1,
                     },),
-                    Instruction::Target(BranchTarget { identifier: 0 })
+                    Instruction::BranchTarget(BranchTarget {
+                        opcode: BranchTargetOpcode::Target,
+                        identifier: 0
+                    })
                 ])
             ]
         );
@@ -150,11 +195,15 @@ mod tests {
 
     #[test]
     fn test_call_ids_no_unknown_target() {
-        let program = Program::new(&[&[Instruction::Call(CallId { identifier: 100 })]]);
+        let program = Program::new(&[&[Instruction::CallId(CallId {
+            opcode: CallIdOpcode::Call,
+            identifier: 100,
+        })]]);
 
         assert_eq!(
             program.functions,
-            vec![Function::new(&[Instruction::Target(BranchTarget {
+            vec![Function::new(&[Instruction::BranchTarget(BranchTarget {
+                opcode: BranchTargetOpcode::Target,
                 identifier: 0
             })])]
         );
