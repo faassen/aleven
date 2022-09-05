@@ -529,4 +529,37 @@ mod tests {
             ))
         )
     }
+
+    #[test]
+    fn test_parse() {
+        let instructions = parse(
+            "
+        r2 = lb r1 0
+        r2 = srli r2 2
+        sh r3 10 = r2
+        ",
+        )
+        .unwrap();
+        let expected_instructions = [
+            Instruction::Load(Load {
+                opcode: LoadOpcode::Lb,
+                offset: 0,
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Immediate(Immediate {
+                opcode: ImmediateOpcode::Srli,
+                value: 2,
+                rs: 2,
+                rd: 2,
+            }),
+            Instruction::Store(Store {
+                opcode: StoreOpcode::Sh,
+                offset: 10,
+                rs: 2,
+                rd: 3,
+            }),
+        ];
+        assert_eq!(instructions, expected_instructions);
+    }
 }
