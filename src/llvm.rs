@@ -267,6 +267,14 @@ impl<'ctx> CodeGen<'ctx> {
                             self.compile_bltu(registers, branch, next_instr_block, &targets);
                             branched = true;
                         }
+                        Bge => {
+                            self.compile_bge(registers, branch, next_instr_block, &targets);
+                            branched = true;
+                        }
+                        Bgeu => {
+                            self.compile_bgeu(registers, branch, next_instr_block, &targets);
+                            branched = true;
+                        }
                     }
                 }
                 Instruction::BranchTarget(branch_target) => {
@@ -824,6 +832,26 @@ impl<'ctx> CodeGen<'ctx> {
         targets: &FxHashMap<u8, BasicBlock>,
     ) {
         self.compile_compare(registers, branch, next_block, targets, IntPredicate::ULT);
+    }
+
+    fn compile_bge(
+        &self,
+        registers: &Registers,
+        branch: &Branch,
+        next_block: BasicBlock,
+        targets: &FxHashMap<u8, BasicBlock>,
+    ) {
+        self.compile_compare(registers, branch, next_block, targets, IntPredicate::SGE);
+    }
+
+    fn compile_bgeu(
+        &self,
+        registers: &Registers,
+        branch: &Branch,
+        next_block: BasicBlock,
+        targets: &FxHashMap<u8, BasicBlock>,
+    ) {
+        self.compile_compare(registers, branch, next_block, targets, IntPredicate::UGE);
     }
 
     fn compile_call(

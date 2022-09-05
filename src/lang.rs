@@ -114,6 +114,8 @@ pub enum BranchOpcode {
     Bne,
     Blt,
     Bltu,
+    Bge,
+    Bgeu,
 }
 
 const BRANCH_TARGET_OPCODE_START: usize = BRANCH_OPCODE_START + BranchOpcode::COUNT;
@@ -518,6 +520,28 @@ impl Instruction {
                         if let Some(index) = index {
                             if (processor.registers[rs1 as usize] as u16)
                                 < (processor.registers[rs2 as usize] as u16)
+                            {
+                                processor.pc = *index;
+                                processor.jumped = true;
+                            }
+                        }
+                    }
+                    Bge => {
+                        let index = targets.get(&target);
+                        if let Some(index) = index {
+                            if processor.registers[rs1 as usize]
+                                >= processor.registers[rs2 as usize]
+                            {
+                                processor.pc = *index;
+                                processor.jumped = true;
+                            }
+                        }
+                    }
+                    Bgeu => {
+                        let index = targets.get(&target);
+                        if let Some(index) = index {
+                            if (processor.registers[rs1 as usize] as u16)
+                                >= (processor.registers[rs2 as usize] as u16)
                             {
                                 processor.pc = *index;
                                 processor.jumped = true;
