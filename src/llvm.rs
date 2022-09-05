@@ -751,12 +751,13 @@ impl<'ctx> CodeGen<'ctx> {
         );
     }
 
-    fn compile_beq(
+    fn compile_compare(
         &self,
         registers: &Registers,
         branch: &Branch,
         next_block: BasicBlock,
         targets: &FxHashMap<u8, BasicBlock>,
+        predicate: IntPredicate,
     ) {
         let rs1 = registers.get(branch.rs1);
         let rs1_value = self.builder.build_load(rs1, "rs1_value");
@@ -764,7 +765,7 @@ impl<'ctx> CodeGen<'ctx> {
         let rs2_value = self.builder.build_load(rs2, "rs2_value");
 
         let cond = self.builder.build_int_compare(
-            IntPredicate::EQ,
+            predicate,
             rs1_value.into_int_value(),
             rs2_value.into_int_value(),
             "beq",
@@ -777,6 +778,16 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
+    fn compile_beq(
+        &self,
+        registers: &Registers,
+        branch: &Branch,
+        next_block: BasicBlock,
+        targets: &FxHashMap<u8, BasicBlock>,
+    ) {
+        self.compile_compare(registers, branch, next_block, targets, IntPredicate::EQ);
+    }
+
     fn compile_bne(
         &self,
         registers: &Registers,
@@ -784,23 +795,7 @@ impl<'ctx> CodeGen<'ctx> {
         next_block: BasicBlock,
         targets: &FxHashMap<u8, BasicBlock>,
     ) {
-        let rs1 = registers.get(branch.rs1);
-        let rs1_value = self.builder.build_load(rs1, "rs1_value");
-        let rs2 = registers.get(branch.rs2);
-        let rs2_value = self.builder.build_load(rs2, "rs2_value");
-
-        let cond = self.builder.build_int_compare(
-            IntPredicate::NE,
-            rs1_value.into_int_value(),
-            rs2_value.into_int_value(),
-            "beq",
-        );
-        if let Some(target) = targets.get(&branch.target) {
-            self.builder
-                .build_conditional_branch(cond, *target, next_block);
-        } else {
-            self.builder.build_unconditional_branch(next_block);
-        }
+        self.compile_compare(registers, branch, next_block, targets, IntPredicate::NE);
     }
 
     fn compile_call(
