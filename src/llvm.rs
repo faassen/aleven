@@ -821,7 +821,6 @@ impl<'ctx> CodeGen<'ctx> {
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let context = Context::create();
-    let codegen = CodeGen::new(&context);
 
     let mut memory = [0u8; 64];
     memory[0] = 11;
@@ -888,19 +887,6 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         rs: 2,
         rd: 31,
     })];
-    // let instructions = [
-    //     Target(BranchTarget { identifier: 176 }),
-    //     Lb(Load {
-    //         offset: 0,
-    //         rs: 1,
-    //         rd: 1,
-    //     }),
-    //     Sb(Store {
-    //         offset: 10,
-    //         rs: 1,
-    //         rd: 2,
-    //     }),
-    // ];
 
     let program = Program::new(&[&main_instructions, &sub_instructions, &sub_sub_instructions]);
     let context = Context::create();

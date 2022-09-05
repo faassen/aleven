@@ -1,6 +1,6 @@
 use crate::cache::FunctionValueCache;
 use crate::function::Function;
-use crate::lang::{BranchTarget, Instruction, Processor};
+use crate::lang::{Instruction, Processor};
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
@@ -79,7 +79,9 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::{BranchTargetOpcode, CallId, CallIdOpcode, Immediate, ImmediateOpcode};
+    use crate::lang::{
+        BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Immediate, ImmediateOpcode,
+    };
 
     #[test]
     fn test_call_ids_no_recursion() {

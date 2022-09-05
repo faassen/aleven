@@ -67,10 +67,6 @@ impl From<&Instruction> for u8 {
     }
 }
 
-fn encode_opcode<T: num::ToPrimitive>(opcode: T) -> u8 {
-    opcode.to_u8().unwrap()
-}
-
 fn decode_opcode(value: u8) -> Option<OpcodeWithType> {
     ImmediateOpcode::from_u8(value)
         .map(OpcodeWithType::Immediate)

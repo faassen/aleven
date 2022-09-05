@@ -17,7 +17,6 @@ pub use assembler::parse;
 pub use cache::FunctionValueCache;
 pub use disassembler::disassemble;
 pub use function::Function;
-pub use lang::{Branch, BranchTarget, CallId, Immediate, Instruction, Load, Register, Store};
 pub use llvm::CodeGen;
 pub use program::Program;
 pub use serializer::Serializer;

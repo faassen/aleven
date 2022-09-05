@@ -1,5 +1,5 @@
 use crate::lang::Instruction;
-use crate::lang::{Branch, BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Processor};
+use crate::lang::{BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Processor};
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
