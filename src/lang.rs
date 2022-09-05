@@ -267,18 +267,15 @@ impl Instruction {
         match self {
             Instruction::Immediate(immediate) => {
                 use ImmediateOpcode::*;
+                let rs = immediate.rs;
+                let rd = immediate.rd;
+                let value = immediate.value;
                 match immediate.opcode {
                     Addi => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value;
                         let result = processor.registers[rs as usize].wrapping_add(value);
                         processor.registers[rd as usize] = result;
                     }
                     Slti => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value;
                         let result = if processor.registers[rs as usize] < value {
                             1
                         } else {
@@ -287,10 +284,7 @@ impl Instruction {
                         processor.registers[rd as usize] = result;
                     }
                     Sltiu => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value as u16;
-                        let result = if (processor.registers[rs as usize] as u16) < value {
+                        let result = if (processor.registers[rs as usize] as u16) < (value as u16) {
                             1
                         } else {
                             0
@@ -298,41 +292,27 @@ impl Instruction {
                         processor.registers[rd as usize] = result;
                     }
                     Andi => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value;
                         let result = processor.registers[rs as usize] & value;
                         processor.registers[rd as usize] = result;
                     }
                     Ori => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value;
                         let result = processor.registers[rs as usize] | value;
                         processor.registers[rd as usize] = result;
                     }
                     Xori => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value;
                         let result = processor.registers[rs as usize] ^ value;
                         processor.registers[rd as usize] = result;
                     }
                     Slli => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value as u16;
                         let result = if value < 16 {
-                            processor.registers[rs as usize] << value
+                            processor.registers[rs as usize] << (value as u16)
                         } else {
                             processor.registers[rs as usize]
                         };
                         processor.registers[rd as usize] = result;
                     }
                     Srli => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value as u16;
+                        let value = value as u16;
                         let result = if value < 16 {
                             (processor.registers[rs as usize] as u16) >> value
                         } else {
@@ -341,9 +321,7 @@ impl Instruction {
                         processor.registers[rd as usize] = result as i16;
                     }
                     Srai => {
-                        let rs = immediate.rs;
-                        let rd = immediate.rd;
-                        let value = immediate.value as u16;
+                        let value = value as u16;
                         let result = if value < 16 {
                             processor.registers[rs as usize] >> value
                         } else {
