@@ -1,6 +1,5 @@
 use aleven::parse;
 use aleven::run::{run_interpreter_func, run_llvm_func, RunnerFunc};
-use aleven::Instruction;
 use aleven::Serializer;
 use parameterized::parameterized;
 
@@ -125,7 +124,6 @@ fn test_bug12(runner: RunnerFunc) {
 
 #[test]
 fn test_bug13() {
-    use Instruction::*;
     let data = [
         23, 81, 23, 255, 255, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 44, 23, 23,
         23, 23, 255, 255, 37, 20, 1, 0, 23, 23, 23, 23, 23, 255, 255, 255, 255, 23, 23, 23, 23, 23,
@@ -157,7 +155,6 @@ fn test_bug13() {
 
 #[test]
 fn test_bug14() {
-    use Instruction::*;
     let data = [
         37, 37, 19, 16, 16, 244, 16, 16, 16, 153, 16, 16, 153, 16, 16, 1, 0, 10, 16, 244, 16, 16,
         19, 16, 16, 244, 16, 16, 16, 1, 0, 0, 0, 0, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
@@ -192,7 +189,6 @@ fn test_bug14() {
 
 #[test]
 fn test_bug15() {
-    use Instruction::*;
     let data = [
         1, 0, 0, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
         22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
