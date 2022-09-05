@@ -333,27 +333,21 @@ impl Instruction {
             }
             Instruction::Register(register) => {
                 use RegisterOpcode::*;
+                let rs1 = register.rs1;
+                let rs2 = register.rs2;
+                let rd = register.rd;
                 match register.opcode {
                     Add => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result = processor.registers[rs1 as usize]
                             .wrapping_add(processor.registers[rs2 as usize]);
                         processor.registers[rd as usize] = result;
                     }
                     Sub => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result = processor.registers[rs1 as usize]
                             .wrapping_sub(processor.registers[rs2 as usize]);
                         processor.registers[rd as usize] = result;
                     }
                     Slt => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result = if processor.registers[rs1 as usize]
                             < processor.registers[rs2 as usize]
                         {
@@ -364,9 +358,6 @@ impl Instruction {
                         processor.registers[rd as usize] = result;
                     }
                     Sltu => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result = if (processor.registers[rs1 as usize] as u16)
                             < (processor.registers[rs2 as usize] as u16)
                         {
@@ -377,33 +368,21 @@ impl Instruction {
                         processor.registers[rd as usize] = result;
                     }
                     And => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result =
                             processor.registers[rs1 as usize] & processor.registers[rs2 as usize];
                         processor.registers[rd as usize] = result;
                     }
                     Or => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result =
                             processor.registers[rs1 as usize] | processor.registers[rs2 as usize];
                         processor.registers[rd as usize] = result;
                     }
                     Xor => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result =
                             processor.registers[rs1 as usize] ^ processor.registers[rs2 as usize];
                         processor.registers[rd as usize] = result;
                     }
                     Sll => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result = if (processor.registers[rs2 as usize] as u16) < 16 {
                             processor.registers[rs1 as usize] << processor.registers[rs2 as usize]
                         } else {
@@ -412,9 +391,6 @@ impl Instruction {
                         processor.registers[rd as usize] = result;
                     }
                     Srl => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result = if (processor.registers[rs2 as usize] as u16) < 16 {
                             (processor.registers[rs1 as usize] as u16)
                                 >> processor.registers[rs2 as usize]
@@ -424,9 +400,6 @@ impl Instruction {
                         processor.registers[rd as usize] = result as i16;
                     }
                     Sra => {
-                        let rs1 = register.rs1;
-                        let rs2 = register.rs2;
-                        let rd = register.rd;
                         let result = if (processor.registers[rs2 as usize] as u16) < 16 {
                             processor.registers[rs1 as usize] >> processor.registers[rs2 as usize]
                         } else {
