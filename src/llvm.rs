@@ -820,8 +820,6 @@ impl<'ctx> CodeGen<'ctx> {
 }
 
 pub fn main() -> Result<(), Box<dyn Error>> {
-    let context = Context::create();
-
     let mut memory = [0u8; 64];
     memory[0] = 11;
 
