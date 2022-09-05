@@ -411,11 +411,11 @@ impl Instruction {
             }
             Instruction::Load(load) => {
                 use LoadOpcode::*;
+                let offset = load.offset;
+                let rs = load.rs;
+                let rd = load.rd;
                 match load.opcode {
                     Lh => {
-                        let offset = load.offset;
-                        let rs = load.rs;
-                        let rd = load.rd;
                         let address = address_h(processor, rs, offset);
                         let result = if let Some(address) = address {
                             if address < (memory.len() - 1) {
@@ -429,9 +429,6 @@ impl Instruction {
                         processor.registers[rd as usize] = result;
                     }
                     Lb => {
-                        let offset = load.offset;
-                        let rs = load.rs;
-                        let rd = load.rd;
                         let address = address_b(processor, rs, offset);
                         let result = if address < memory.len() {
                             memory[address]
@@ -441,9 +438,6 @@ impl Instruction {
                         processor.registers[rd as usize] = result as i8 as i16;
                     }
                     Lbu => {
-                        let offset = load.offset;
-                        let rs = load.rs;
-                        let rd = load.rd;
                         let address = address_b(processor, rs, offset);
                         let result = if address < memory.len() {
                             memory[address]
@@ -456,11 +450,11 @@ impl Instruction {
             }
             Instruction::Store(store) => {
                 use StoreOpcode::*;
+                let offset = store.offset;
+                let rs = store.rs;
+                let rd = store.rd;
                 match store.opcode {
                     Sh => {
-                        let offset = store.offset;
-                        let rs = store.rs;
-                        let rd = store.rd;
                         let address = address_h(processor, rd, offset);
                         if let Some(address) = address {
                             if address < (memory.len() - 1) {
@@ -472,9 +466,6 @@ impl Instruction {
                         }
                     }
                     Sb => {
-                        let offset = store.offset;
-                        let rs = store.rs;
-                        let rd = store.rd;
                         let address = address_b(processor, rd, offset);
                         if address < memory.len() {
                             memory[address] = processor.registers[rs as usize] as u8;
@@ -484,11 +475,11 @@ impl Instruction {
             }
             Instruction::Branch(branch) => {
                 use BranchOpcode::*;
+                let rs1 = branch.rs1;
+                let rs2 = branch.rs2;
+                let target = branch.target;
                 match branch.opcode {
                     Beq => {
-                        let rs1 = branch.rs1;
-                        let rs2 = branch.rs2;
-                        let target = branch.target;
                         let index = targets.get(&target);
                         if let Some(index) = index {
                             if processor.registers[rs1 as usize]
@@ -500,9 +491,6 @@ impl Instruction {
                         }
                     }
                     Bne => {
-                        let rs1 = branch.rs1;
-                        let rs2 = branch.rs2;
-                        let target = branch.target;
                         let index = targets.get(&target);
                         if let Some(index) = index {
                             if processor.registers[rs1 as usize]
