@@ -8,3 +8,11 @@
 - Loop budget
 
 - Switch
+
+## assembler helpers
+
+- accept 0x and 0b values
+
+- named targets
+
+- multiple functions in one
