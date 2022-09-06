@@ -239,13 +239,6 @@ fn peol_comment(input: &str) -> ParseResult<()> {
     )(input)
 }
 
-// fn trailing_whitespace(input: &str) -> ParseResult<()> {
-//     value(
-//         (),
-//         pair(char(' '), is_not("\n\r")),
-//     )(input)
-// }
-
 fn whitespace_and_comments(input: &str) -> ParseResult<()> {
     value((), many0(alt((whitespace, peol_comment))))(input)
 }
@@ -275,23 +268,29 @@ fn instruction_with_optional_comment<'a>(
     }
 }
 
-fn instructions<'a>(input: &'a str, opcodes: &'a AllOpcodes) -> ParseResult<'a, Vec<Instruction>> {
-    terminated(
-        nom::multi::many0(delimited(
-            whitespace_and_comments,
-            terminated(instruction_with_optional_comment(opcodes), end_of_line),
-            whitespace_and_comments,
-        )),
-        eof,
-    )(input)
+fn instructions<'a>(
+    opcodes: &'a AllOpcodes,
+) -> impl Fn(&'a str) -> ParseResult<'a, Vec<Instruction>> {
+    move |input: &'a str| {
+        terminated(
+            nom::multi::many0(delimited(
+                whitespace_and_comments,
+                terminated(instruction_with_optional_comment(opcodes), end_of_line),
+                whitespace_and_comments,
+            )),
+            eof,
+        )(input)
+    }
 }
 
 /// Parse a vector of instructions from a string
 pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
     let opcodes = AllOpcodes::new();
-    let (_, instructions) = instructions(input, &opcodes).map_err(|e| e.to_string())?;
+    let (_, instructions) = instructions(&opcodes)(input).map_err(|e| e.to_string())?;
     Ok(instructions)
 }
+
+// pub fn parse_program(input: &str) -> Result<Program, String> {}
 
 #[cfg(test)]
 mod tests {
@@ -470,8 +469,10 @@ mod tests {
     #[test]
     fn test_instructions() {
         let opcodes = AllOpcodes::new();
+        let r = instructions(&opcodes)("call 10\nr1 = add r2 r3");
+
         assert_eq!(
-            instructions("call 10\nr1 = add r2 r3", &opcodes),
+            r,
             Ok((
                 "",
                 vec![
@@ -493,20 +494,23 @@ mod tests {
     #[test]
     fn test_instructions_first_broken_opcode() {
         let opcodes = AllOpcodes::new();
-        assert_error!(instructions("r1 = broken r2 r3", &opcodes),)
+        let r = instructions(&opcodes)("r1 = broken r2 r3");
+        assert_error!(r)
     }
 
     #[test]
     fn test_instructions_second_broken_opcode() {
         let opcodes = AllOpcodes::new();
-        assert_error!(instructions("call 10\nr1 = broken r2 r3", &opcodes),)
+        let r = instructions(&opcodes)("call 10\nr1 = broken r2 r3");
+        assert_error!(r)
     }
 
     #[test]
     fn test_instructions_with_comment() {
         let opcodes = AllOpcodes::new();
+        let r = instructions(&opcodes)("call 10 # foo\nr1 = add r2 r3 # bar");
         assert_eq!(
-            instructions("call 10 # foo\nr1 = add r2 r3 # bar", &opcodes),
+            r,
             Ok((
                 "",
                 vec![
@@ -528,8 +532,9 @@ mod tests {
     #[test]
     fn test_instructions_with_blank_lines() {
         let opcodes = AllOpcodes::new();
+        let r = instructions(&opcodes)("call 10\n\nr1 = add r2 r3");
         assert_eq!(
-            instructions("call 10\n\nr1 = add r2 r3", &opcodes),
+            r,
             Ok((
                 "",
                 vec![
@@ -545,7 +550,7 @@ mod tests {
                     })
                 ]
             ))
-        )
+        );
     }
 
     #[test]
@@ -561,8 +566,9 @@ mod tests {
     #[test]
     fn test_instructions_with_comment_lines() {
         let opcodes = AllOpcodes::new();
+        let r = instructions(&opcodes)("call 10\n# this is a comment \nr1 = add r2 r3");
         assert_eq!(
-            instructions("call 10\n# this is a comment \nr1 = add r2 r3", &opcodes),
+            r,
             Ok((
                 "",
                 vec![
