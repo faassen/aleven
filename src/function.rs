@@ -10,7 +10,7 @@ use rustc_hash::FxHashSet;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Function {
     instructions: Vec<Instruction>,
-    repeat: u8,
+    pub repeat: u8,
 }
 
 impl Function {
@@ -36,7 +36,13 @@ impl Function {
         memory_len: u16,
         functions: &FxHashMap<u16, FunctionValue<'ctx>>,
     ) -> FunctionValue<'ctx> {
-        codegen.compile_function(id, &self.instructions, memory_len, functions)
+        codegen.compile_function(
+            id,
+            if self.repeat > 0 { self.repeat } else { 1 },
+            &self.instructions,
+            memory_len,
+            functions,
+        )
     }
 
     pub fn compile_as_program<'ctx>(

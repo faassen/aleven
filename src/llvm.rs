@@ -162,6 +162,7 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn compile_function(
         &self,
         id: usize,
+        repeat: u8,
         instructions: &[Instruction],
         memory_size: u16,
         functions: &FxHashMap<u16, FunctionValue>,
@@ -178,6 +179,20 @@ impl<'ctx> CodeGen<'ctx> {
         let registers_ptr = function.get_nth_param(1).unwrap().into_pointer_value();
 
         let registers = &Registers::new(self, function);
+
+        let loop_info = if repeat > 1 {
+            let loop_counter = self
+                .builder
+                .build_alloca(self.context.i8_type(), "loop_counter");
+            self.builder
+                .build_store(loop_counter, self.context.i8_type().const_int(0, false));
+            let loop_block = self.context.append_basic_block(function, "loop");
+            self.builder.build_unconditional_branch(loop_block);
+            self.builder.position_at_end(loop_block);
+            Some((loop_counter, loop_block))
+        } else {
+            None
+        };
 
         let (blocks, targets) = self.get_blocks(function, instructions);
 
@@ -298,7 +313,35 @@ impl<'ctx> CodeGen<'ctx> {
                 self.builder.build_unconditional_branch(next_instr_block);
             }
         }
+
+        let end_block = self.context.append_basic_block(function, "end");
+
         self.builder.position_at_end(next_instr_block);
+        if let Some((loop_counter, loop_block)) = loop_info {
+            let loop_end_block = self.context.append_basic_block(function, "loop exit");
+            self.builder.build_unconditional_branch(loop_end_block);
+            self.builder.position_at_end(loop_end_block);
+
+            let counter = self.builder.build_load(loop_counter, "loop_counter");
+            let counter = self.builder.build_int_add(
+                counter.into_int_value(),
+                self.context.i8_type().const_int(1, false),
+                "loop add 1",
+            );
+            self.builder.build_store(loop_counter, counter);
+            let loop_continue = self.builder.build_int_compare(
+                IntPredicate::ULT,
+                counter,
+                self.context.i8_type().const_int(repeat as u64, false),
+                "loop continue condition",
+            );
+            self.builder
+                .build_conditional_branch(loop_continue, loop_block, end_block);
+        } else {
+            self.builder.build_unconditional_branch(end_block);
+        }
+
+        self.builder.position_at_end(end_block);
         self.builder.build_return(None);
         function
     }

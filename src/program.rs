@@ -69,7 +69,7 @@ impl Program {
         memory_size: u16,
         cache: &mut FunctionValueCache<'ctx>,
     ) -> JitFunction<ProgramFunc> {
-        let dependency_map = cache.compile(0, &self, codegen, memory_size);
+        let dependency_map = cache.compile(0, self, codegen, memory_size);
         codegen
             .compile_program(program_id, &dependency_map)
             .unwrap()

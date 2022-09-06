@@ -7,7 +7,7 @@ use rustc_hash::FxHashMap;
 type CallId = u16;
 type FunctionValueId = usize;
 
-type CacheKey<'ctx> = (&'ctx [Instruction], Vec<FunctionValueId>);
+type CacheKey<'ctx> = (u8, &'ctx [Instruction], Vec<FunctionValueId>);
 type CacheValue<'ctx> = (FunctionValueId, FunctionValue<'ctx>);
 
 pub struct FunctionValueCache<'ctx> {
@@ -60,7 +60,11 @@ impl<'ctx> FunctionValueCache<'ctx> {
         let function_value_ids: Vec<FunctionValueId> =
             call_ids.iter().map(|call_id| result[call_id].0).collect();
 
-        let cache_key = (function.get_instructions(), function_value_ids);
+        let cache_key = (
+            function.repeat,
+            function.get_instructions(),
+            function_value_ids,
+        );
 
         let entry = self.cache.get(&cache_key);
         let to_insert = if let Some(entry) = entry {

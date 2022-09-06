@@ -2,7 +2,7 @@ use aleven::parse;
 use aleven::run::{run_interpreter_repeat_func, run_llvm_repeat_func, RepeatRunnerFunc};
 use parameterized::parameterized;
 
-#[parameterized(runner={run_interpreter_repeat_func})]
+#[parameterized(runner={run_llvm_repeat_func, run_interpreter_repeat_func})]
 fn test_repeat(runner: RepeatRunnerFunc) {
     let instructions = parse(
         "
