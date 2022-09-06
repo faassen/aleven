@@ -937,7 +937,11 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         rd: 31,
     })];
 
-    let program = Program::new(&[&main_instructions, &sub_instructions, &sub_sub_instructions]);
+    let program = Program::new(&[
+        (0, &main_instructions),
+        (0, &sub_instructions),
+        (0, &sub_sub_instructions),
+    ]);
     let context = Context::create();
     let codegen = CodeGen::new(&context);
     let mut cache = FunctionValueCache::new();

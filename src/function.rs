@@ -10,18 +10,23 @@ use rustc_hash::FxHashSet;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Function {
     instructions: Vec<Instruction>,
+    repeat: u8,
 }
 
 impl Function {
-    pub fn new(instructions: &[Instruction]) -> Function {
+    pub fn new(instructions: &[Instruction], repeat: u8) -> Function {
         Function {
             instructions: Function::cleanup_branches(instructions),
+            repeat,
         }
     }
 
     pub fn interpret(&self, memory: &mut [u8], processor: &mut Processor, functions: &[Function]) {
         let targets = Function::targets(&self.instructions);
-        processor.execute(&self.instructions, memory, &targets, functions);
+        let repeat = if self.repeat > 0 { self.repeat } else { 1 };
+        for _i in 0..repeat {
+            processor.execute(&self.instructions, memory, &targets, functions);
+        }
     }
 
     pub fn compile<'ctx>(
@@ -131,7 +136,7 @@ impl Function {
                 }
             }
         }
-        Function::new(&new_instructions)
+        Function::new(&new_instructions, self.repeat)
     }
 
     fn targets(instructions: &[Instruction]) -> FxHashMap<u8, usize> {

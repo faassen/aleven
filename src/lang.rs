@@ -242,6 +242,7 @@ impl Processor {
         targets: &FxHashMap<u8, usize>,
         functions: &[Function],
     ) {
+        self.pc = 0;
         while self.pc < instructions.len() {
             let instruction = &instructions[self.pc];
             instruction.execute(self, memory, targets, functions);

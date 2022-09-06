@@ -5,15 +5,17 @@ use crate::llvm::CodeGen;
 use crate::program::Program;
 use inkwell::context::Context;
 
+pub type Runner = fn(&[(u8, &[Instruction])], &mut [u8]);
 pub type RunnerFunc = fn(&[Instruction], &mut [u8]);
 pub type RunnerProgram = fn(&[&[Instruction]], &mut [u8]);
+pub type RepeatRunnerFunc = fn(&[Instruction], &mut [u8], u8);
 
-pub fn run_interpreter_program(funcs: &[&[Instruction]], memory: &mut [u8]) {
+pub fn run_interpreter(funcs: &[(u8, &[Instruction])], memory: &mut [u8]) {
     let program = Program::new(funcs);
     program.interpret(memory);
 }
 
-pub fn run_llvm_program(funcs: &[&[Instruction]], memory: &mut [u8]) {
+pub fn run_llvm(funcs: &[(u8, &[Instruction])], memory: &mut [u8]) {
     let program = Program::new(funcs);
     let context = Context::create();
     let codegen = CodeGen::new(&context);
@@ -23,10 +25,30 @@ pub fn run_llvm_program(funcs: &[&[Instruction]], memory: &mut [u8]) {
     Function::run(&func, memory);
 }
 
+fn repeat_0<'a>(funcs: &'a [&'a [Instruction]]) -> Vec<(u8, &'a [Instruction])> {
+    funcs.iter().map(|f| (0, *f)).collect()
+}
+
+pub fn run_interpreter_program(funcs: &[&[Instruction]], memory: &mut [u8]) {
+    run_interpreter(&repeat_0(funcs), memory);
+}
+
+pub fn run_llvm_program(funcs: &[&[Instruction]], memory: &mut [u8]) {
+    run_llvm(&repeat_0(funcs), memory);
+}
+
 pub fn run_llvm_func(instructions: &[Instruction], memory: &mut [u8]) {
     run_llvm_program(&[instructions], memory);
 }
 
 pub fn run_interpreter_func(instructions: &[Instruction], memory: &mut [u8]) {
     run_interpreter_program(&[instructions], memory);
+}
+
+pub fn run_llvm_repeat_func(instructions: &[Instruction], memory: &mut [u8], repeat: u8) {
+    run_llvm(&[(repeat, instructions)], memory);
+}
+
+pub fn run_interpreter_repeat_func(instructions: &[Instruction], memory: &mut [u8], repeat: u8) {
+    run_interpreter(&[(repeat, instructions)], memory);
 }
