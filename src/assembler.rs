@@ -4,7 +4,7 @@ use crate::lang::{
 };
 use nom::branch::alt;
 use nom::bytes::complete::{is_not, tag, take_while};
-use nom::character::complete::{char, multispace1};
+use nom::character::complete::{char, multispace0, multispace1};
 use nom::character::complete::{i16, line_ending, space0, space1, u16, u8};
 use nom::combinator::{eof, map_opt, opt, value};
 use nom::error::{convert_error, Error, VerboseError};
@@ -15,7 +15,7 @@ use rustc_hash::FxHashMap;
 use std::fmt::Display;
 use strum::IntoEnumIterator;
 
-type ParseResult<'a, T> = IResult<&'a str, T, VerboseError<&'a str>>;
+type ParseResult<'a, T> = IResult<&'a str, T>; // , VerboseError<&'a str>>;
 
 #[derive(Debug)]
 struct OpcodeError {}
@@ -239,6 +239,13 @@ fn peol_comment(input: &str) -> ParseResult<()> {
     )(input)
 }
 
+// fn trailing_whitespace(input: &str) -> ParseResult<()> {
+//     value(
+//         (),
+//         pair(char(' '), is_not("\n\r")),
+//     )(input)
+// }
+
 fn whitespace_and_comments(input: &str) -> ParseResult<()> {
     value((), many0(alt((whitespace, peol_comment))))(input)
 }
@@ -262,7 +269,8 @@ fn instruction_with_optional_comment<'a>(
 ) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
     move |input: &'a str| {
         let (input, instruction) = instruction(opcodes)(input)?;
-        let (input, _) = opt(preceded(space0, peol_comment))(input)?;
+        let (input, _) = space0(input)?;
+        let (input, _) = opt(peol_comment)(input)?;
         Ok((input, instruction))
     }
 }
@@ -579,6 +587,39 @@ mod tests {
             "
         r2 = lb r1 0
         r2 = srli r2 2
+        sh r3 10 = r2
+        ",
+        )
+        .unwrap();
+        let expected_instructions = [
+            Instruction::Load(Load {
+                opcode: LoadOpcode::Lb,
+                offset: 0,
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Immediate(Immediate {
+                opcode: ImmediateOpcode::Srli,
+                value: 2,
+                rs: 2,
+                rd: 2,
+            }),
+            Instruction::Store(Store {
+                opcode: StoreOpcode::Sh,
+                offset: 10,
+                rs: 2,
+                rd: 3,
+            }),
+        ];
+        assert_eq!(instructions, expected_instructions);
+    }
+
+    #[test]
+    fn test_parse_trailing_space() {
+        let instructions = parse(
+            "
+        r2 = lb r1 0
+        r2 = srli r2 2 
         sh r3 10 = r2
         ",
         )
