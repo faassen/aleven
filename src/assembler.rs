@@ -1,14 +1,15 @@
+use crate::function::Function;
 use crate::lang::{
     Branch, BranchOpcode, BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Immediate,
     ImmediateOpcode, Instruction, Load, LoadOpcode, Register, RegisterOpcode, Store, StoreOpcode,
 };
 use nom::branch::alt;
 use nom::bytes::complete::{is_not, tag, take_while};
-use nom::character::complete::{char, multispace0, multispace1};
+use nom::character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, multispace1};
 use nom::character::complete::{i16, line_ending, space0, space1, u16, u8};
-use nom::combinator::{eof, map_opt, opt, value};
+use nom::combinator::{eof, map_opt, opt, recognize, value};
 use nom::error::{convert_error, Error, VerboseError};
-use nom::multi::many0;
+use nom::multi::{many0, many0_count};
 use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 use rustc_hash::FxHashMap;
@@ -272,21 +273,47 @@ fn instructions<'a>(
     opcodes: &'a AllOpcodes,
 ) -> impl Fn(&'a str) -> ParseResult<'a, Vec<Instruction>> {
     move |input: &'a str| {
-        terminated(
-            nom::multi::many0(delimited(
-                whitespace_and_comments,
-                terminated(instruction_with_optional_comment(opcodes), end_of_line),
-                whitespace_and_comments,
-            )),
-            eof,
+        nom::multi::many0(delimited(
+            whitespace_and_comments,
+            terminated(instruction_with_optional_comment(opcodes), end_of_line),
+            whitespace_and_comments,
+        ))(input)
+    }
+}
+
+fn identifier(input: &str) -> ParseResult<&str> {
+    recognize(pair(
+        alt((alpha1, tag("_"))),
+        many0_count(alt((alphanumeric1, tag("_")))),
+    ))(input)
+}
+
+fn func_header<'a>(input: &'a str) -> ParseResult<&'a str> {
+    preceded(pair(tag("func"), space1), identifier)(input)
+}
+
+fn func_body<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, Vec<Instruction>> {
+    move |input: &'a str| {
+        delimited(
+            tuple((space0, tag("{"), space0)),
+            instructions(opcodes),
+            tuple((space0, tag("}"), space0)),
         )(input)
+    }
+}
+
+fn func<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, (&'a str, Function)> {
+    move |input: &'a str| {
+        let (input, (name, instructions)) = pair(func_header, func_body(opcodes))(input)?;
+        Ok((input, (name, Function::new(&instructions, 0))))
     }
 }
 
 /// Parse a vector of instructions from a string
 pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
     let opcodes = AllOpcodes::new();
-    let (_, instructions) = instructions(&opcodes)(input).map_err(|e| e.to_string())?;
+    let (_, instructions) =
+        terminated(instructions(&opcodes), eof)(input).map_err(|e| e.to_string())?;
     Ok(instructions)
 }
 
@@ -492,17 +519,15 @@ mod tests {
     }
 
     #[test]
-    fn test_instructions_first_broken_opcode() {
-        let opcodes = AllOpcodes::new();
-        let r = instructions(&opcodes)("r1 = broken r2 r3");
-        assert_error!(r)
+    fn test_parse_first_broken_opcode() {
+        let r = parse("r1 = broken r2 r3");
+        assert!(r.is_err())
     }
 
     #[test]
     fn test_instructions_second_broken_opcode() {
-        let opcodes = AllOpcodes::new();
-        let r = instructions(&opcodes)("call 10\nr1 = broken r2 r3");
-        assert_error!(r)
+        let r = parse("call 10\nr1 = broken r2 r3");
+        assert!(r.is_err())
     }
 
     #[test]
@@ -583,6 +608,66 @@ mod tests {
                         rs2: 3
                     })
                 ]
+            ))
+        )
+    }
+
+    #[test]
+    fn test_func_header() {
+        let r = func_header("func foo");
+        assert_eq!(r, Ok(("", "foo")))
+    }
+
+    #[test]
+    fn test_func_body() {
+        let opcodes = AllOpcodes::new();
+        let r = func_body(&opcodes)("{ call 10\nr1 = add r2 r3\n}");
+        assert_eq!(
+            r,
+            Ok((
+                "",
+                vec![
+                    Instruction::CallId(CallId {
+                        opcode: CallIdOpcode::Call,
+                        identifier: 10
+                    }),
+                    Instruction::Register(Register {
+                        opcode: RegisterOpcode::Add,
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 3
+                    })
+                ],
+            ))
+        )
+    }
+
+    #[test]
+    fn test_func() {
+        let opcodes = AllOpcodes::new();
+        let r = func(&opcodes)("func foo { call 10\nr1 = add r2 r3\n }");
+        assert_eq!(
+            r,
+            Ok((
+                "",
+                (
+                    "foo",
+                    Function::new(
+                        &[
+                            Instruction::CallId(CallId {
+                                opcode: CallIdOpcode::Call,
+                                identifier: 10
+                            }),
+                            Instruction::Register(Register {
+                                opcode: RegisterOpcode::Add,
+                                rd: 1,
+                                rs1: 2,
+                                rs2: 3
+                            })
+                        ],
+                        0
+                    )
+                )
             ))
         )
     }
