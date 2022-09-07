@@ -12,7 +12,7 @@ use nom::combinator::{eof, fail, map_opt, opt, recognize, value};
 use nom::error::ErrorKind;
 use nom::multi::{many0, many0_count};
 use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple};
-use nom::IResult;
+use nom::{error_position, IResult};
 use rustc_hash::FxHashMap;
 use std::fmt::Display;
 use strum::IntoEnumIterator;
@@ -34,9 +34,14 @@ struct FunctionNode {
     instruction_nodes: Vec<InstructionNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum ResolutionError {
+    Call(String),
+}
+
 impl FunctionNode {
-    fn resolve(&self, func_ids: &FuncIds) -> Result<Function, Vec<String>> {
-        let instruction_results: Vec<Result<Instruction, String>> = self
+    fn resolve(&self, func_ids: &FuncIds) -> Result<Function, Vec<ResolutionError>> {
+        let (instructions, errors): (Vec<_>, Vec<_>) = self
             .instruction_nodes
             .iter()
             .map(|node| match node {
@@ -49,29 +54,16 @@ impl FunctionNode {
                             identifier: *id as u16,
                         }))
                     } else {
-                        Err(name.clone())
+                        Err(ResolutionError::Call(name.clone()))
                     }
                 }
             })
-            .collect();
-        let unresolved_names: Vec<String> = instruction_results
-            .iter()
-            .filter_map(|result| match result {
-                Ok(_) => None,
-                Err(name) => Some(name.clone()),
-            })
-            .collect();
-        if unresolved_names.is_empty() {
-            let instructions: Vec<Instruction> = instruction_results
-                .iter()
-                .map(|result| match result {
-                    Ok(instruction) => instruction.clone(),
-                    Err(_) => unreachable!(),
-                })
-                .collect();
+            .partition(Result::is_ok);
+        if errors.is_empty() {
+            let instructions: Vec<_> = instructions.into_iter().map(Result::unwrap).collect();
             Ok(Function::new(self.name.clone(), &instructions, self.repeat))
         } else {
-            Err(unresolved_names)
+            Err(errors.into_iter().map(Result::unwrap_err).collect())
         }
     }
 }
@@ -82,37 +74,28 @@ struct ProgramNode {
 }
 
 impl TryFrom<ProgramNode> for Program {
-    type Error = Vec<String>;
+    type Error = Vec<ResolutionError>;
 
-    fn try_from(program_node: ProgramNode) -> Result<Program, Vec<String>> {
+    fn try_from(program_node: ProgramNode) -> Result<Program, Vec<ResolutionError>> {
         let mut func_ids = FuncIds::default();
         for (id, function_node) in program_node.function_nodes.iter().enumerate() {
             func_ids.insert(&function_node.name, id);
         }
-        let function_results: Vec<Result<Function, Vec<String>>> = program_node
+        let (functions, errors): (Vec<_>, Vec<_>) = program_node
             .function_nodes
             .iter()
             .map(|function_node| function_node.resolve(&func_ids))
-            .collect();
-        let unresolved_names: Vec<String> = function_results
-            .iter()
-            .filter_map(|result| match result {
-                Ok(_) => None,
-                Err(names) => Some(names.clone()),
-            })
+            .partition(Result::is_ok);
+        let errors: Vec<_> = errors
+            .into_iter()
+            .map(Result::unwrap_err)
             .flatten()
             .collect();
-        if unresolved_names.is_empty() {
-            let functions: Vec<Function> = function_results
-                .iter()
-                .map(|result| match result {
-                    Ok(function) => (*function).clone(),
-                    Err(_) => unreachable!(),
-                })
-                .collect();
+        if errors.is_empty() {
+            let functions = functions.into_iter().map(Result::unwrap).collect();
             Ok(Program::from_functions(functions))
         } else {
-            Err(unresolved_names)
+            Err(errors)
         }
     }
 }
@@ -457,7 +440,7 @@ pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseProgramError {
     ParseError(String),
-    UnresolvedCalls(Vec<String>),
+    ResolutionErrors(Vec<ResolutionError>),
 }
 
 pub fn parse_program(input: &str) -> Result<Program, ParseProgramError> {
@@ -466,7 +449,7 @@ pub fn parse_program(input: &str) -> Result<Program, ParseProgramError> {
         .map_err(|e| ParseProgramError::ParseError(e.to_string()))?;
     program_node
         .try_into()
-        .map_err(ParseProgramError::UnresolvedCalls)
+        .map_err(ParseProgramError::ResolutionErrors)
 }
 
 #[cfg(test)]
@@ -913,8 +896,8 @@ mod tests {
         );
         assert_eq!(
             r,
-            Err(ParseProgramError::UnresolvedCalls(vec![
-                ("unknown".to_string())
+            Err(ParseProgramError::ResolutionErrors(vec![
+                ResolutionError::Call("unknown".to_string())
             ]))
         )
     }
