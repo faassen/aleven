@@ -13,7 +13,7 @@ mod program;
 pub mod run;
 mod serializer;
 
-pub use assembler::parse;
+pub use assembler::{parse, parse_program};
 pub use cache::FunctionValueCache;
 pub use disassembler::disassemble;
 pub use function::Function;
