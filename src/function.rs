@@ -7,7 +7,7 @@ use inkwell::values::FunctionValue;
 use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function {
     name: String,
     instructions: Vec<Instruction>,

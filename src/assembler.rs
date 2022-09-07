@@ -35,22 +35,44 @@ struct FunctionNode {
 }
 
 impl FunctionNode {
-    fn resolve(&self, func_ids: &FuncIds) -> Function {
-        let instructions: Vec<Instruction> = self
+    fn resolve(&self, func_ids: &FuncIds) -> Result<Function, Vec<String>> {
+        let instruction_results: Vec<Result<Instruction, String>> = self
             .instruction_nodes
             .iter()
             .map(|node| match node {
-                InstructionNode::Resolved(instruction) => instruction.clone(),
+                InstructionNode::Resolved(instruction) => Ok(instruction.clone()),
                 InstructionNode::UnresolvedCall(name) => {
-                    let id = func_ids.get(&name[..]).unwrap();
-                    Instruction::CallId(CallId {
-                        opcode: CallIdOpcode::Call,
-                        identifier: *id as u16,
-                    })
+                    let id = func_ids.get(&name[..]);
+                    if let Some(id) = id {
+                        Ok(Instruction::CallId(CallId {
+                            opcode: CallIdOpcode::Call,
+                            identifier: *id as u16,
+                        }))
+                    } else {
+                        Err(name.clone())
+                    }
                 }
             })
             .collect();
-        Function::new(self.name.clone(), &instructions, self.repeat)
+        let unresolved_names: Vec<String> = instruction_results
+            .iter()
+            .filter_map(|result| match result {
+                Ok(_) => None,
+                Err(name) => Some(name.clone()),
+            })
+            .collect();
+        if unresolved_names.is_empty() {
+            let instructions: Vec<Instruction> = instruction_results
+                .iter()
+                .map(|result| match result {
+                    Ok(instruction) => instruction.clone(),
+                    Err(_) => unreachable!(),
+                })
+                .collect();
+            Ok(Function::new(self.name.clone(), &instructions, self.repeat))
+        } else {
+            Err(unresolved_names)
+        }
     }
 }
 
@@ -59,18 +81,39 @@ struct ProgramNode {
     function_nodes: Vec<FunctionNode>,
 }
 
-impl From<ProgramNode> for Program {
-    fn from(program_node: ProgramNode) -> Program {
+impl TryFrom<ProgramNode> for Program {
+    type Error = Vec<String>;
+
+    fn try_from(program_node: ProgramNode) -> Result<Program, Vec<String>> {
         let mut func_ids = FuncIds::default();
         for (id, function_node) in program_node.function_nodes.iter().enumerate() {
             func_ids.insert(&function_node.name, id);
         }
-        let functions = program_node
+        let function_results: Vec<Result<Function, Vec<String>>> = program_node
             .function_nodes
             .iter()
             .map(|function_node| function_node.resolve(&func_ids))
             .collect();
-        Program::from_functions(functions)
+        let unresolved_names: Vec<String> = function_results
+            .iter()
+            .filter_map(|result| match result {
+                Ok(_) => None,
+                Err(names) => Some(names.clone()),
+            })
+            .flatten()
+            .collect();
+        if unresolved_names.is_empty() {
+            let functions: Vec<Function> = function_results
+                .iter()
+                .map(|result| match result {
+                    Ok(function) => (*function).clone(),
+                    Err(_) => unreachable!(),
+                })
+                .collect();
+            Ok(Program::from_functions(functions))
+        } else {
+            Err(unresolved_names)
+        }
     }
 }
 
@@ -411,10 +454,19 @@ pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
     Ok(instructions)
 }
 
-pub fn parse_program(input: &str) -> Result<Program, String> {
+#[derive(Debug, PartialEq, Eq)]
+pub enum ParseProgramError {
+    ParseError(String),
+    UnresolvedCalls(Vec<String>),
+}
+
+pub fn parse_program(input: &str) -> Result<Program, ParseProgramError> {
     let opcodes = AllOpcodes::new();
-    let (_, program_node) = terminated(program(&opcodes), eof)(input).map_err(|e| e.to_string())?;
-    Ok(program_node.into())
+    let (_, program_node) = terminated(program(&opcodes), eof)(input)
+        .map_err(|e| ParseProgramError::ParseError(e.to_string()))?;
+    program_node
+        .try_into()
+        .map_err(ParseProgramError::UnresolvedCalls)
 }
 
 #[cfg(test)]
@@ -850,6 +902,19 @@ mod tests {
                     })],
                     0
                 )
+            ]))
+        )
+    }
+
+    #[test]
+    fn test_parse_program_resolve_error() {
+        let r = parse_program(
+            "func foo { call unknown\nr1 = add r2 r3\n }\n func bar { r1 = add r2 r5\n }",
+        );
+        assert_eq!(
+            r,
+            Err(ParseProgramError::UnresolvedCalls(vec![
+                ("unknown".to_string())
             ]))
         )
     }
