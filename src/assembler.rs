@@ -292,7 +292,7 @@ fn instruction_call<'a>(
     opcodes: &'a Opcodes<CallIdOpcode>,
 ) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
-        let (input, (opcode, identifier)) =
+        let (input, (_, identifier)) =
             tuple((opcode(opcodes), preceded(space1, identifier)))(input)?;
         Ok((
             input,
@@ -375,6 +375,13 @@ fn func_header<'a>(input: &'a str) -> ParseResult<&'a str> {
     preceded(pair(tag("func"), space1), identifier)(input)
 }
 
+fn repeat_header<'a>(input: &'a str) -> ParseResult<(&'a str, u8)> {
+    preceded(
+        pair(tag("repeat"), space1),
+        separated_pair(identifier, space1, u8),
+    )(input)
+}
+
 fn func_body<'a>(
     opcodes: &'a AllOpcodes,
 ) -> impl Fn(&'a str) -> ParseResult<'a, Vec<InstructionNode>> {
@@ -401,12 +408,27 @@ fn func<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, Func
     }
 }
 
+fn repeat<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, FunctionNode> {
+    move |input: &'a str| {
+        let (input, ((name, repeat), instructions)) =
+            pair(repeat_header, func_body(opcodes))(input)?;
+        Ok((
+            input,
+            FunctionNode {
+                name: name.to_string(),
+                instruction_nodes: instructions,
+                repeat,
+            },
+        ))
+    }
+}
+
 fn program<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, ProgramNode> {
     move |input: &'a str| {
         let (input, function_nodes) = terminated(
             many0(delimited(
                 whitespace_and_comments,
-                func(opcodes),
+                alt((func(opcodes), repeat(opcodes))),
                 whitespace_and_comments,
             )),
             eof,
@@ -750,6 +772,12 @@ mod tests {
     }
 
     #[test]
+    fn test_repeat_header() {
+        let r = repeat_header("repeat foo 3");
+        assert_eq!(r, Ok(("", ("foo", 3))))
+    }
+
+    #[test]
     fn test_func_body() {
         let opcodes = AllOpcodes::new();
         let r = func_body(&opcodes)("{ r1 = addi r2 10\nr1 = add r2 r3\n}");
@@ -884,6 +912,36 @@ mod tests {
     }
 
     #[test]
+    fn test_repeat() {
+        let opcodes = AllOpcodes::new();
+        let r = repeat(&opcodes)("repeat foo 3 { r1 = addi r2 10\nr1 = add r2 r3\n }");
+        assert_eq!(
+            r,
+            Ok((
+                "",
+                FunctionNode {
+                    name: "foo".to_string(),
+                    instruction_nodes: vec![
+                        Resolved(Instruction::Immediate(Immediate {
+                            opcode: ImmediateOpcode::Addi,
+                            rd: 1,
+                            rs: 2,
+                            value: 10
+                        })),
+                        Resolved(Instruction::Register(Register {
+                            opcode: RegisterOpcode::Add,
+                            rd: 1,
+                            rs1: 2,
+                            rs2: 3
+                        }))
+                    ],
+                    repeat: 3
+                }
+            ))
+        )
+    }
+
+    #[test]
     fn test_program_node() {
         let opcodes = AllOpcodes::new();
         let r = program(&opcodes)(
@@ -957,6 +1015,44 @@ mod tests {
                         rs2: 5
                     })],
                     0
+                )
+            ]))
+        )
+    }
+
+    #[test]
+    fn test_parse_program_with_repeat() {
+        let r = parse_program(
+            "func foo { call bar\nr1 = add r2 r3\n }\n repeat bar 10 { r1 = add r2 r5\n }",
+        );
+        assert_eq!(
+            r,
+            Ok(Program::from_functions(vec![
+                Function::new(
+                    "foo".to_string(),
+                    &[
+                        Instruction::CallId(CallId {
+                            opcode: CallIdOpcode::Call,
+                            identifier: 1
+                        }),
+                        Instruction::Register(Register {
+                            opcode: RegisterOpcode::Add,
+                            rd: 1,
+                            rs1: 2,
+                            rs2: 3
+                        })
+                    ],
+                    0
+                ),
+                Function::new(
+                    "bar".to_string(),
+                    &[Instruction::Register(Register {
+                        opcode: RegisterOpcode::Add,
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 5
+                    })],
+                    10
                 )
             ]))
         )
