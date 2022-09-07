@@ -9,13 +9,15 @@ use rustc_hash::FxHashSet;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Function {
+    name: String,
     instructions: Vec<Instruction>,
     pub repeat: u8,
 }
 
 impl Function {
-    pub fn new(instructions: &[Instruction], repeat: u8) -> Function {
+    pub fn new(name: String, instructions: &[Instruction], repeat: u8) -> Function {
         Function {
+            name,
             instructions: Function::cleanup_branches(instructions),
             repeat,
         }
@@ -142,7 +144,7 @@ impl Function {
                 }
             }
         }
-        Function::new(&new_instructions, self.repeat)
+        Function::new(self.name.to_string(), &new_instructions, self.repeat)
     }
 
     fn targets(instructions: &[Instruction]) -> FxHashMap<u8, usize> {

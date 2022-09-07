@@ -13,12 +13,18 @@ pub struct Program {
 
 impl Program {
     pub fn new(functions: &[(u8, &[Instruction])]) -> Program {
-        let mut result = Program {
-            functions: functions
+        Program::from_functions(
+            functions
                 .iter()
-                .map(|(repeat, instructions)| Function::new(instructions, *repeat))
+                .map(|(repeat, instructions)| {
+                    Function::new("unknown".to_string(), instructions, *repeat)
+                })
                 .collect(),
-        };
+        )
+    }
+
+    pub fn from_functions(functions: Vec<Function>) -> Program {
+        let mut result = Program { functions };
         result.cleanup_calls();
         result
     }
@@ -96,6 +102,7 @@ mod tests {
         assert_eq!(
             program.functions,
             vec![Function::new(
+                "unknown".to_string(),
                 &[Instruction::BranchTarget(BranchTarget {
                     opcode: BranchTargetOpcode::Target,
                     identifier: 0
@@ -128,6 +135,7 @@ mod tests {
             program.functions,
             vec![
                 Function::new(
+                    "unknown".to_string(),
                     &[
                         Instruction::CallId(CallId {
                             opcode: CallIdOpcode::Call,
@@ -141,6 +149,7 @@ mod tests {
                     0
                 ),
                 Function::new(
+                    "unknown".to_string(),
                     &[Instruction::BranchTarget(BranchTarget {
                         opcode: BranchTargetOpcode::Target,
                         identifier: 0
@@ -189,6 +198,7 @@ mod tests {
             program.functions,
             vec![
                 Function::new(
+                    "unknown".to_string(),
                     &[
                         Instruction::CallId(CallId {
                             opcode: CallIdOpcode::Call,
@@ -206,6 +216,7 @@ mod tests {
                     0
                 ),
                 Function::new(
+                    "unknown".to_string(),
                     &[Instruction::BranchTarget(BranchTarget {
                         opcode: BranchTargetOpcode::Target,
                         identifier: 0
@@ -213,6 +224,7 @@ mod tests {
                     0
                 ),
                 Function::new(
+                    "unknown".to_string(),
                     &[
                         Instruction::Immediate(Immediate {
                             opcode: ImmediateOpcode::Addi,
@@ -244,6 +256,7 @@ mod tests {
         assert_eq!(
             program.functions,
             vec![Function::new(
+                "unknown".to_string(),
                 &[Instruction::BranchTarget(BranchTarget {
                     opcode: BranchTargetOpcode::Target,
                     identifier: 0

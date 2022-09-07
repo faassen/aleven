@@ -5,10 +5,24 @@ use crate::llvm::CodeGen;
 use crate::program::Program;
 use inkwell::context::Context;
 
+pub type Run = fn(&Program, &mut [u8]);
 pub type Runner = fn(&[(u8, &[Instruction])], &mut [u8]);
 pub type RunnerFunc = fn(&[Instruction], &mut [u8]);
 pub type RunnerProgram = fn(&[&[Instruction]], &mut [u8]);
 pub type RepeatRunnerFunc = fn(&[Instruction], &mut [u8], u8);
+
+pub fn interpreted(program: &Program, memory: &mut [u8]) {
+    program.interpret(memory);
+}
+
+pub fn compiled(program: &Program, memory: &mut [u8]) {
+    let context = Context::create();
+    let codegen = CodeGen::new(&context);
+    let mut cache = FunctionValueCache::new();
+    let func = program.compile(0, &codegen, memory.len() as u16, &mut cache);
+    codegen.module.verify().unwrap();
+    Function::run(&func, memory);
+}
 
 pub fn run_interpreter(funcs: &[(u8, &[Instruction])], memory: &mut [u8]) {
     let program = Program::new(funcs);
