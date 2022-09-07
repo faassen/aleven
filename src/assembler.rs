@@ -776,6 +776,84 @@ mod tests {
     }
 
     #[test]
+    fn test_parse() {
+        let instructions = parse(
+            "
+        r2 = lb r1 0
+        r2 = srli r2 2
+        sh r3 10 = r2
+        ",
+        )
+        .unwrap();
+        let expected_instructions = [
+            Instruction::Load(Load {
+                opcode: LoadOpcode::Lb,
+                offset: 0,
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Immediate(Immediate {
+                opcode: ImmediateOpcode::Srli,
+                value: 2,
+                rs: 2,
+                rd: 2,
+            }),
+            Instruction::Store(Store {
+                opcode: StoreOpcode::Sh,
+                offset: 10,
+                rs: 2,
+                rd: 3,
+            }),
+        ];
+        assert_eq!(instructions, expected_instructions);
+    }
+
+    #[test]
+    fn test_parse_trailing_space() {
+        let instructions = parse(
+            "
+        r2 = lb r1 0
+        r2 = srli r2 2 
+        sh r3 10 = r2
+        ",
+        )
+        .unwrap();
+        let expected_instructions = [
+            Instruction::Load(Load {
+                opcode: LoadOpcode::Lb,
+                offset: 0,
+                rs: 1,
+                rd: 2,
+            }),
+            Instruction::Immediate(Immediate {
+                opcode: ImmediateOpcode::Srli,
+                value: 2,
+                rs: 2,
+                rd: 2,
+            }),
+            Instruction::Store(Store {
+                opcode: StoreOpcode::Sh,
+                offset: 10,
+                rs: 2,
+                rd: 3,
+            }),
+        ];
+        assert_eq!(instructions, expected_instructions);
+    }
+
+    #[test]
+    fn test_parse_unknown_opcode() {
+        assert!(parse(
+            "
+        r2 = lb r1 0
+        r2 = broken r2 2
+        sh r3 10 = r2
+        ",
+        )
+        .is_err());
+    }
+
+    #[test]
     fn test_func() {
         let opcodes = AllOpcodes::new();
         let r = func(&opcodes)("func foo { r1 = addi r2 10\nr1 = add r2 r3\n }");
@@ -895,83 +973,5 @@ mod tests {
                 ResolutionError::Call("unknown".to_string())
             ]))
         )
-    }
-
-    #[test]
-    fn test_parse() {
-        let instructions = parse(
-            "
-        r2 = lb r1 0
-        r2 = srli r2 2
-        sh r3 10 = r2
-        ",
-        )
-        .unwrap();
-        let expected_instructions = [
-            Instruction::Load(Load {
-                opcode: LoadOpcode::Lb,
-                offset: 0,
-                rs: 1,
-                rd: 2,
-            }),
-            Instruction::Immediate(Immediate {
-                opcode: ImmediateOpcode::Srli,
-                value: 2,
-                rs: 2,
-                rd: 2,
-            }),
-            Instruction::Store(Store {
-                opcode: StoreOpcode::Sh,
-                offset: 10,
-                rs: 2,
-                rd: 3,
-            }),
-        ];
-        assert_eq!(instructions, expected_instructions);
-    }
-
-    #[test]
-    fn test_parse_trailing_space() {
-        let instructions = parse(
-            "
-        r2 = lb r1 0
-        r2 = srli r2 2 
-        sh r3 10 = r2
-        ",
-        )
-        .unwrap();
-        let expected_instructions = [
-            Instruction::Load(Load {
-                opcode: LoadOpcode::Lb,
-                offset: 0,
-                rs: 1,
-                rd: 2,
-            }),
-            Instruction::Immediate(Immediate {
-                opcode: ImmediateOpcode::Srli,
-                value: 2,
-                rs: 2,
-                rd: 2,
-            }),
-            Instruction::Store(Store {
-                opcode: StoreOpcode::Sh,
-                offset: 10,
-                rs: 2,
-                rd: 3,
-            }),
-        ];
-        assert_eq!(instructions, expected_instructions);
-    }
-
-    #[test]
-    fn test_parse_unknown_opcode() {
-        assert!(parse(
-            "
-        r2 = lb r1 0
-        r2 = broken r2 2
-        sh r3 10 = r2
-        ",
-        )
-        .is_err());
     }
 }
