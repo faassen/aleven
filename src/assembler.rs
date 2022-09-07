@@ -24,6 +24,8 @@ type FuncIds<'a> = FxHashMap<&'a str, usize>;
 enum InstructionNode {
     Resolved(Instruction),
     UnresolvedCall(String),
+    UnresolvedBranch(BranchOpcode, u8, u8, String),
+    UnresolvedTarget(String),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -36,15 +38,49 @@ struct FunctionNode {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ResolutionError {
     Call(String),
+    Branch(String),
 }
 
 impl FunctionNode {
     fn resolve(&self, func_ids: &FuncIds) -> Result<Function, Vec<ResolutionError>> {
+        let targets: Vec<_> = self
+            .instruction_nodes
+            .iter()
+            .filter_map(|node| {
+                if let InstructionNode::UnresolvedTarget(name) = node {
+                    Some(name)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let target_lookup: FxHashMap<_, _> =
+            targets.iter().enumerate().map(|(i, t)| (t, i)).collect();
+
         let (instructions, errors): (Vec<_>, Vec<_>) = self
             .instruction_nodes
             .iter()
             .map(|node| match node {
                 InstructionNode::Resolved(instruction) => Ok(instruction.clone()),
+                InstructionNode::UnresolvedBranch(opcode, rs1, rs2, name) => {
+                    let identifier = target_lookup
+                        .get(&name)
+                        .ok_or_else(|| ResolutionError::Branch(name.to_string()))?;
+                    Ok(Instruction::Branch(Branch {
+                        opcode: *opcode,
+                        rs1: *rs1,
+                        rs2: *rs2,
+                        target: *identifier as u8,
+                    }))
+                }
+                InstructionNode::UnresolvedTarget(name) => {
+                    // should always be able to find previously identified target
+                    let identifier = target_lookup.get(&name).unwrap();
+                    Ok(Instruction::BranchTarget(BranchTarget {
+                        opcode: BranchTargetOpcode::Target,
+                        identifier: *identifier as u8,
+                    }))
+                }
                 InstructionNode::UnresolvedCall(name) => {
                     let id = func_ids.get(&name[..]);
                     if let Some(id) = id {
@@ -259,16 +295,11 @@ fn instruction_branch<'a>(
             opcode(opcodes),
             preceded(space1, register),
             preceded(space1, register),
-            preceded(space1, u8),
+            preceded(space1, identifier),
         ))(input)?;
         Ok((
             input,
-            InstructionNode::Resolved(Instruction::Branch(Branch {
-                opcode,
-                rs1,
-                rs2,
-                target,
-            })),
+            InstructionNode::UnresolvedBranch(opcode, rs1, rs2, target.to_string()),
         ))
     }
 }
@@ -277,14 +308,8 @@ fn instruction_target<'a>(
     opcodes: &'a Opcodes<BranchTargetOpcode>,
 ) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
-        let (input, (opcode, identifier)) = tuple((opcode(opcodes), preceded(space1, u8)))(input)?;
-        Ok((
-            input,
-            InstructionNode::Resolved(Instruction::BranchTarget(BranchTarget {
-                opcode,
-                identifier,
-            })),
-        ))
+        let (input, (_, name)) = tuple((opcode(opcodes), preceded(space1, identifier)))(input)?;
+        Ok((input, InstructionNode::UnresolvedTarget(name.to_string())))
     }
 }
 
@@ -587,15 +612,10 @@ mod tests {
     fn test_instruction_branch() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_branch(&opcodes)("beq r1 r2 10"),
+            instruction_branch(&opcodes)("beq r1 r2 target"),
             Ok((
                 "",
-                Resolved(Instruction::Branch(Branch {
-                    opcode: BranchOpcode::Beq,
-                    rs1: 1,
-                    rs2: 2,
-                    target: 10
-                }))
+                InstructionNode::UnresolvedBranch(BranchOpcode::Beq, 1, 2, "target".to_string())
             ))
         );
     }
@@ -604,14 +624,8 @@ mod tests {
     fn test_instruction_target() {
         let opcodes = Opcodes::new();
         assert_eq!(
-            instruction_target(&opcodes)("target 10"),
-            Ok((
-                "",
-                Resolved(Instruction::BranchTarget(BranchTarget {
-                    opcode: BranchTargetOpcode::Target,
-                    identifier: 10
-                }))
-            ))
+            instruction_target(&opcodes)("target t1"),
+            Ok(("", InstructionNode::UnresolvedTarget("t1".to_string())))
         );
     }
 
@@ -1055,6 +1069,100 @@ mod tests {
                     10
                 )
             ]))
+        )
+    }
+
+    #[test]
+    fn test_parse_program_with_branch() {
+        let r = parse_program(
+            "
+        func foo {
+            beq r1 r2 end 
+            r1 = add r2 r3
+            target end
+            r2 = add r2 r1
+        }",
+        );
+        assert_eq!(
+            r,
+            Ok(Program::from_functions(vec![Function::new(
+                "foo".to_string(),
+                &[
+                    Instruction::Branch(Branch {
+                        opcode: BranchOpcode::Beq,
+                        rs1: 1,
+                        rs2: 2,
+                        target: 0
+                    }),
+                    Instruction::Register(Register {
+                        opcode: RegisterOpcode::Add,
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 3
+                    }),
+                    Instruction::BranchTarget(BranchTarget {
+                        opcode: BranchTargetOpcode::Target,
+                        identifier: 0
+                    }),
+                    Instruction::Register(Register {
+                        opcode: RegisterOpcode::Add,
+                        rd: 2,
+                        rs1: 2,
+                        rs2: 1
+                    }),
+                ],
+                0
+            ),]))
+        )
+    }
+
+    #[test]
+    fn test_parse_program_with_duplicate_target() {
+        let r = parse_program(
+            "
+        func foo {
+            beq r1 r2 end 
+            r1 = add r2 r3
+            target end
+            r2 = add r2 r1
+            target end
+        }",
+        );
+        // last target identifier wins
+        assert_eq!(
+            r,
+            Ok(Program::from_functions(vec![Function::new(
+                "foo".to_string(),
+                &[
+                    Instruction::Branch(Branch {
+                        opcode: BranchOpcode::Beq,
+                        rs1: 1,
+                        rs2: 2,
+                        target: 1
+                    }),
+                    Instruction::Register(Register {
+                        opcode: RegisterOpcode::Add,
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 3
+                    }),
+                    Instruction::BranchTarget(BranchTarget {
+                        opcode: BranchTargetOpcode::Target,
+                        identifier: 1
+                    }),
+                    Instruction::Register(Register {
+                        opcode: RegisterOpcode::Add,
+                        rd: 2,
+                        rs1: 2,
+                        rs2: 1
+                    }),
+                    Instruction::BranchTarget(BranchTarget {
+                        opcode: BranchTargetOpcode::Target,
+                        identifier: 1
+                    }),
+                ],
+                0
+            ),]))
         )
     }
 

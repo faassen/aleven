@@ -174,3 +174,38 @@ impl Function {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::lang::{Branch, BranchOpcode};
+
+    #[test]
+    fn test_non_existent_branch_target() {
+        let function = Function::new(
+            "foo".to_string(),
+            &[Instruction::Branch(Branch {
+                opcode: BranchOpcode::Beq,
+                rs1: 0,
+                rs2: 1,
+                target: 100, // does not exist, so will go to end
+            })],
+            0,
+        );
+
+        assert_eq!(
+            function,
+            Function::new(
+                "foo".to_string(),
+                &[Instruction::Branch(Branch {
+                    opcode: BranchOpcode::Beq,
+                    rs1: 0,
+                    rs2: 1,
+                    target: 0
+                }),],
+                0
+            )
+        );
+    }
+}
