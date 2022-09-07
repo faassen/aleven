@@ -21,6 +21,24 @@ type ParseResult<'a, T> = IResult<&'a str, T>; // , VerboseError<&'a str>>;
 
 type FuncIds<'a> = FxHashMap<&'a str, usize>;
 
+#[derive(Debug, PartialEq, Eq)]
+enum InstructionNode {
+    Resolved(Instruction),
+    UnresolvedCall(String),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct FunctionNode {
+    name: String,
+    repeat: u16,
+    instruction_nodes: Vec<InstructionNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ProgramNode {
+    function_nodes: Vec<FunctionNode>,
+}
+
 struct AllOpcodes {
     immediate_opcodes: Opcodes<ImmediateOpcode>,
     register_opcodes: Opcodes<RegisterOpcode>,
@@ -79,7 +97,7 @@ fn opcode<'a, T: Display + IntoEnumIterator + Copy>(
 
 fn instruction_immediate<'a>(
     opcodes: &'a Opcodes<ImmediateOpcode>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         let (input, (rd, (opcode, rs, value))) = separated_pair(
             register,
@@ -92,19 +110,19 @@ fn instruction_immediate<'a>(
         )(input)?;
         Ok((
             input,
-            (Instruction::Immediate(Immediate {
+            (InstructionNode::Resolved(Instruction::Immediate(Immediate {
                 opcode,
                 rd,
                 rs,
                 value,
-            })),
+            }))),
         ))
     }
 }
 
 fn instruction_register<'a>(
     opcodes: &'a Opcodes<RegisterOpcode>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         let (input, (rd, (opcode, rs1, rs2))) = separated_pair(
             register,
@@ -117,19 +135,19 @@ fn instruction_register<'a>(
         )(input)?;
         Ok((
             input,
-            (Instruction::Register(Register {
+            (InstructionNode::Resolved(Instruction::Register(Register {
                 opcode,
                 rd,
                 rs1,
                 rs2,
-            })),
+            }))),
         ))
     }
 }
 
 fn instruction_load<'a>(
     opcodes: &'a Opcodes<LoadOpcode>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         let (input, (rd, (opcode, rs, offset))) = separated_pair(
             register,
@@ -142,19 +160,19 @@ fn instruction_load<'a>(
         )(input)?;
         Ok((
             input,
-            Instruction::Load(Load {
+            InstructionNode::Resolved(Instruction::Load(Load {
                 opcode,
                 rd,
                 rs,
                 offset,
-            }),
+            })),
         ))
     }
 }
 
 fn instruction_store<'a>(
     opcodes: &'a Opcodes<StoreOpcode>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         let (input, ((opcode, rd, offset), rs)) = separated_pair(
             tuple((
@@ -167,19 +185,19 @@ fn instruction_store<'a>(
         )(input)?;
         Ok((
             input,
-            Instruction::Store(Store {
+            InstructionNode::Resolved(Instruction::Store(Store {
                 opcode,
                 rd,
                 rs,
                 offset,
-            }),
+            })),
         ))
     }
 }
 
 fn instruction_branch<'a>(
     opcodes: &'a Opcodes<BranchOpcode>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         let (input, (opcode, rs1, rs2, target)) = tuple((
             opcode(opcodes),
@@ -189,51 +207,41 @@ fn instruction_branch<'a>(
         ))(input)?;
         Ok((
             input,
-            Instruction::Branch(Branch {
+            InstructionNode::Resolved(Instruction::Branch(Branch {
                 opcode,
                 rs1,
                 rs2,
                 target,
-            }),
+            })),
         ))
     }
 }
 
 fn instruction_target<'a>(
     opcodes: &'a Opcodes<BranchTargetOpcode>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         let (input, (opcode, identifier)) = tuple((opcode(opcodes), preceded(space1, u8)))(input)?;
         Ok((
             input,
-            (Instruction::BranchTarget(BranchTarget { opcode, identifier })),
+            InstructionNode::Resolved(Instruction::BranchTarget(BranchTarget {
+                opcode,
+                identifier,
+            })),
         ))
     }
 }
 
 fn instruction_call<'a>(
     opcodes: &'a Opcodes<CallIdOpcode>,
-    func_ids: &'a FuncIds<'a>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         let (input, (opcode, identifier)) =
             tuple((opcode(opcodes), preceded(space1, identifier)))(input)?;
-        let func_id = func_ids.get(identifier);
-
-        if let Some(func_id) = func_id {
-            Ok((
-                input,
-                (Instruction::CallId(CallId {
-                    opcode,
-                    identifier: *func_id as u16,
-                })),
-            ))
-        } else {
-            Err(nom::Err::Error(nom::error::make_error(
-                input,
-                ErrorKind::Tag,
-            )))
-        }
+        Ok((
+            input,
+            InstructionNode::UnresolvedCall(identifier.to_string()),
+        ))
     }
 }
 
@@ -263,8 +271,7 @@ fn whitespace_and_comments(input: &str) -> ParseResult<()> {
 
 fn instruction<'a>(
     opcodes: &'a AllOpcodes,
-    func_ids: &'a FuncIds<'a>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
         alt((
             instruction_immediate(&opcodes.immediate_opcodes),
@@ -273,17 +280,16 @@ fn instruction<'a>(
             instruction_store(&opcodes.store_opcodes),
             instruction_branch(&opcodes.branch_opcodes),
             instruction_target(&opcodes.branch_target_opcodes),
-            instruction_call(&opcodes.call_id_opcodes, func_ids),
+            instruction_call(&opcodes.call_id_opcodes),
         ))(input)
     }
 }
 
 fn instruction_with_optional_comment<'a>(
     opcodes: &'a AllOpcodes,
-    func_ids: &'a FuncIds<'a>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Instruction> {
+) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
     move |input: &'a str| {
-        let (input, instruction) = instruction(opcodes, func_ids)(input)?;
+        let (input, instruction) = instruction(opcodes)(input)?;
         let (input, _) = space0(input)?;
         let (input, _) = opt(peol_comment)(input)?;
         Ok((input, instruction))
@@ -292,15 +298,11 @@ fn instruction_with_optional_comment<'a>(
 
 fn instructions<'a>(
     opcodes: &'a AllOpcodes,
-    func_ids: &'a FuncIds<'a>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Vec<Instruction>> {
+) -> impl Fn(&'a str) -> ParseResult<'a, Vec<InstructionNode>> {
     move |input: &'a str| {
         nom::multi::many0(delimited(
             whitespace_and_comments,
-            terminated(
-                instruction_with_optional_comment(opcodes, func_ids),
-                end_of_line,
-            ),
+            terminated(instruction_with_optional_comment(opcodes), end_of_line),
             whitespace_and_comments,
         ))(input)
     }
@@ -319,80 +321,80 @@ fn func_header<'a>(input: &'a str) -> ParseResult<&'a str> {
 
 fn func_body<'a>(
     opcodes: &'a AllOpcodes,
-    func_ids: &'a FuncIds<'a>,
-) -> impl Fn(&'a str) -> ParseResult<'a, Vec<Instruction>> {
+) -> impl Fn(&'a str) -> ParseResult<'a, Vec<InstructionNode>> {
     move |input: &'a str| {
         delimited(
             tuple((space0, tag("{"), space0)),
-            instructions(opcodes, func_ids),
+            instructions(opcodes),
             tuple((space0, tag("}"), space0)),
         )(input)
     }
 }
 
-fn declaration_instruction(input: &str) -> ParseResult<()> {
-    value((), is_not("}\n\r"))(input)
-}
+// fn declaration_instruction(input: &str) -> ParseResult<()> {
+//     value((), is_not("}\n\r"))(input)
+// }
 
-fn declaration_content(input: &str) -> ParseResult<()> {
-    value(
-        (),
-        nom::multi::many0(delimited(
-            whitespace_and_comments,
-            terminated(declaration_instruction, end_of_line),
-            whitespace_and_comments,
-        )),
-    )(input)
-}
+// fn declaration_content(input: &str) -> ParseResult<()> {
+//     value(
+//         (),
+//         nom::multi::many0(delimited(
+//             whitespace_and_comments,
+//             terminated(declaration_instruction, end_of_line),
+//             whitespace_and_comments,
+//         )),
+//     )(input)
+// }
 
-fn func_body_declaration<'a>(input: &'a str) -> ParseResult<()> {
-    value(
-        (),
-        delimited(
-            tuple((space0, tag("{"), space0)),
-            declaration_content,
-            tuple((space0, tag("}"), space0)),
-        ),
-    )(input)
-}
+// fn func_body_declaration<'a>(input: &'a str) -> ParseResult<()> {
+//     value(
+//         (),
+//         delimited(
+//             tuple((space0, tag("{"), space0)),
+//             declaration_content,
+//             tuple((space0, tag("}"), space0)),
+//         ),
+//     )(input)
+// }
 
-fn func<'a>(
-    opcodes: &'a AllOpcodes,
-    func_ids: &'a FuncIds<'a>,
-) -> impl Fn(&'a str) -> ParseResult<'a, (&'a str, Function)> {
+fn func<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, FunctionNode> {
     move |input: &'a str| {
-        let (input, (name, instructions)) = pair(func_header, func_body(opcodes, func_ids))(input)?;
+        let (input, (name, instructions)) = pair(func_header, func_body(opcodes))(input)?;
         Ok((
             input,
-            (name, Function::new(name.to_string(), &instructions, 0)),
+            FunctionNode {
+                name: name.to_string(),
+                instruction_nodes: instructions,
+                repeat: 0,
+            },
         ))
     }
 }
 
-fn func_declaration<'a>(input: &'a str) -> ParseResult<&'a str> {
-    terminated(func_header, func_body_declaration)(input)
-}
+// fn func_declaration<'a>(input: &'a str) -> ParseResult<&'a str> {
+//     terminated(func_header, func_body_declaration)(input)
+// }
 
-fn func_names<'a>(input: &'a str) -> ParseResult<Vec<&'a str>> {
-    terminated(
-        many0(delimited(
-            whitespace_and_comments,
-            func_declaration,
-            whitespace_and_comments,
-        )),
-        eof,
-    )(input)
-}
+// fn func_names<'a>(input: &'a str) -> ParseResult<Vec<&'a str>> {
+//     terminated(
+//         many0(delimited(
+//             whitespace_and_comments,
+//             func_declaration,
+//             whitespace_and_comments,
+//         )),
+//         eof,
+//     )(input)
+// }
 
-fn func_ids<'a>(input: &'a str) -> ParseResult<FxHashMap<&'a str, usize>> {
-    let (input, names) = func_names(input)?;
-    let mut func_ids = FxHashMap::default();
-    for name in names {
-        func_ids.insert(name, func_ids.len());
-    }
+// fn func_ids<'a>(input: &'a str) -> ParseResult<FxHashMap<&'a str, usize>> {
+//     let (input, names) = func_names(input)?;
+//     let mut func_ids = FxHashMap::default();
+//     for name in names {
+//         func_ids.insert(name, func_ids.len());
+//     }
 
-    Ok((input, func_ids))
-}
+//     Ok((input, func_ids))
+// }
 
 // fn funcs<'a>(input: &'a str) -> ParseResult<Vec<&'a Function>> {
 //     terminated(
@@ -408,9 +410,17 @@ fn func_ids<'a>(input: &'a str) -> ParseResult<FxHashMap<&'a str, usize>> {
 /// Parse a vector of instructions from a string
 pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
     let opcodes = AllOpcodes::new();
-    let func_ids = FxHashMap::default();
-    let (_, instructions) =
-        terminated(instructions(&opcodes, &func_ids), eof)(input).map_err(|e| e.to_string())?;
+    let (_, instruction_nodes) =
+        terminated(instructions(&opcodes), eof)(input).map_err(|e| e.to_string())?;
+    let instructions = instruction_nodes
+        .iter()
+        .map(|node| match node {
+            InstructionNode::Resolved(instruction) => instruction.clone(),
+            _ => {
+                panic!("Unresolved node");
+            }
+        })
+        .collect();
     Ok(instructions)
 }
 
@@ -425,6 +435,7 @@ pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
 mod tests {
     use super::*;
     use nom_test_helpers::assert_error;
+    use InstructionNode::Resolved;
 
     #[test]
     fn test_register() {
@@ -455,12 +466,12 @@ mod tests {
             instruction_register(&opcodes)("r1 = add r2 r3"),
             Ok((
                 "",
-                Instruction::Register(Register {
+                Resolved(Instruction::Register(Register {
                     opcode: RegisterOpcode::Add,
                     rd: 1,
                     rs1: 2,
                     rs2: 3
-                })
+                }))
             ))
         );
     }
@@ -478,24 +489,24 @@ mod tests {
             instruction_immediate(&opcodes)("r1 = addi r2 5"),
             Ok((
                 "",
-                Instruction::Immediate(Immediate {
+                Resolved(Instruction::Immediate(Immediate {
                     opcode: ImmediateOpcode::Addi,
                     rd: 1,
                     rs: 2,
                     value: 5
-                })
+                }))
             ))
         );
         assert_eq!(
             instruction_immediate(&opcodes)("r1 = addi r2 -5"),
             Ok((
                 "",
-                Instruction::Immediate(Immediate {
+                Resolved(Instruction::Immediate(Immediate {
                     opcode: ImmediateOpcode::Addi,
                     rd: 1,
                     rs: 2,
                     value: -5
-                })
+                }))
             ))
         );
     }
@@ -507,12 +518,12 @@ mod tests {
             instruction_load(&opcodes)("r1 = lb r2 5"),
             Ok((
                 "",
-                Instruction::Load(Load {
+                Resolved(Instruction::Load(Load {
                     opcode: LoadOpcode::Lb,
                     rd: 1,
                     rs: 2,
                     offset: 5
-                })
+                }))
             ))
         );
     }
@@ -524,12 +535,12 @@ mod tests {
             instruction_store(&opcodes)("sb r2 5 = r1"),
             Ok((
                 "",
-                Instruction::Store(Store {
+                Resolved(Instruction::Store(Store {
                     opcode: StoreOpcode::Sb,
                     rd: 2,
                     rs: 1,
                     offset: 5
-                })
+                }))
             ))
         );
     }
@@ -541,12 +552,12 @@ mod tests {
             instruction_branch(&opcodes)("beq r1 r2 10"),
             Ok((
                 "",
-                Instruction::Branch(Branch {
+                Resolved(Instruction::Branch(Branch {
                     opcode: BranchOpcode::Beq,
                     rs1: 1,
                     rs2: 2,
                     target: 10
-                })
+                }))
             ))
         );
     }
@@ -558,10 +569,10 @@ mod tests {
             instruction_target(&opcodes)("target 10"),
             Ok((
                 "",
-                Instruction::BranchTarget(BranchTarget {
+                Resolved(Instruction::BranchTarget(BranchTarget {
                     opcode: BranchTargetOpcode::Target,
                     identifier: 10
-                })
+                }))
             ))
         );
     }
@@ -569,60 +580,48 @@ mod tests {
     #[test]
     fn test_instruction_call() {
         let opcodes = Opcodes::new();
-        let mut func_ids = FxHashMap::default();
-        func_ids.insert("foo", 10);
         assert_eq!(
-            instruction_call(&opcodes, &func_ids)("call foo"),
-            Ok((
-                "",
-                Instruction::CallId(CallId {
-                    opcode: CallIdOpcode::Call,
-                    identifier: 10
-                })
-            ))
+            instruction_call(&opcodes)("call foo"),
+            Ok(("", InstructionNode::UnresolvedCall("foo".to_string())))
         );
     }
 
     #[test]
     fn test_instruction_broken() {
         let opcodes = AllOpcodes::new();
-        assert_error!(instruction(&opcodes, &FxHashMap::default())(
-            "r1 = broken r2 5"
-        ),);
+        assert_error!(instruction(&opcodes)("r1 = broken r2 5"),);
     }
 
     #[test]
     fn test_instruction_with_optional_comment_broken() {
         let opcodes = AllOpcodes::new();
-        assert_error!(instruction_with_optional_comment(
-            &opcodes,
-            &FxHashMap::default()
-        )("r1 = broken r2 5"),);
+        assert_error!(instruction_with_optional_comment(&opcodes,)(
+            "r1 = broken r2 5"
+        ),);
     }
 
     #[test]
     fn test_instructions() {
         let opcodes = AllOpcodes::new();
-        let func_ids = FxHashMap::default();
-        let r = instructions(&opcodes, &func_ids)("r1 = addi r2 50\nr1 = add r2 r3");
+        let r = instructions(&opcodes)("r1 = addi r2 50\nr1 = add r2 r3");
 
         assert_eq!(
             r,
             Ok((
                 "",
                 vec![
-                    Instruction::Immediate(Immediate {
+                    Resolved(Instruction::Immediate(Immediate {
                         opcode: ImmediateOpcode::Addi,
                         rd: 1,
                         rs: 2,
                         value: 50
-                    }),
-                    Instruction::Register(Register {
+                    })),
+                    Resolved(Instruction::Register(Register {
                         opcode: RegisterOpcode::Add,
                         rd: 1,
                         rs1: 2,
                         rs2: 3
-                    })
+                    }))
                 ]
             ))
         )
@@ -643,25 +642,24 @@ mod tests {
     #[test]
     fn test_instructions_with_comment() {
         let opcodes = AllOpcodes::new();
-        let func_ids = FxHashMap::default();
-        let r = instructions(&opcodes, &func_ids)("r1 = addi r2 10 # foo\nr1 = add r2 r3 # bar");
+        let r = instructions(&opcodes)("r1 = addi r2 10 # foo\nr1 = add r2 r3 # bar");
         assert_eq!(
             r,
             Ok((
                 "",
                 vec![
-                    Instruction::Immediate(Immediate {
+                    Resolved(Instruction::Immediate(Immediate {
                         opcode: ImmediateOpcode::Addi,
                         rd: 1,
                         rs: 2,
                         value: 10
-                    }),
-                    Instruction::Register(Register {
+                    })),
+                    Resolved(Instruction::Register(Register {
                         opcode: RegisterOpcode::Add,
                         rd: 1,
                         rs1: 2,
                         rs2: 3
-                    })
+                    }))
                 ]
             ))
         )
@@ -670,25 +668,24 @@ mod tests {
     #[test]
     fn test_instructions_with_blank_lines() {
         let opcodes = AllOpcodes::new();
-        let func_ids = FxHashMap::default();
-        let r = instructions(&opcodes, &func_ids)("r1 = addi r2 10\n\nr1 = add r2 r3");
+        let r = instructions(&opcodes)("r1 = addi r2 10\n\nr1 = add r2 r3");
         assert_eq!(
             r,
             Ok((
                 "",
                 vec![
-                    Instruction::Immediate(Immediate {
+                    Resolved(Instruction::Immediate(Immediate {
                         opcode: ImmediateOpcode::Addi,
                         rd: 1,
                         rs: 2,
                         value: 10
-                    }),
-                    Instruction::Register(Register {
+                    })),
+                    Resolved(Instruction::Register(Register {
                         opcode: RegisterOpcode::Add,
                         rd: 1,
                         rs1: 2,
                         rs2: 3
-                    })
+                    }))
                 ]
             ))
         );
@@ -707,27 +704,24 @@ mod tests {
     #[test]
     fn test_instructions_with_comment_lines() {
         let opcodes = AllOpcodes::new();
-        let func_ids = FxHashMap::default();
-        let r = instructions(&opcodes, &func_ids)(
-            "r1 = addi r2 10\n# this is a comment \nr1 = add r2 r3",
-        );
+        let r = instructions(&opcodes)("r1 = addi r2 10\n# this is a comment \nr1 = add r2 r3");
         assert_eq!(
             r,
             Ok((
                 "",
                 vec![
-                    Instruction::Immediate(Immediate {
+                    Resolved(Instruction::Immediate(Immediate {
                         opcode: ImmediateOpcode::Addi,
                         rd: 1,
                         rs: 2,
                         value: 10
-                    }),
-                    Instruction::Register(Register {
+                    })),
+                    Resolved(Instruction::Register(Register {
                         opcode: RegisterOpcode::Add,
                         rd: 1,
                         rs1: 2,
                         rs2: 3
-                    })
+                    }))
                 ]
             ))
         )
@@ -742,25 +736,24 @@ mod tests {
     #[test]
     fn test_func_body() {
         let opcodes = AllOpcodes::new();
-        let func_ids = FxHashMap::default();
-        let r = func_body(&opcodes, &func_ids)("{ r1 = addi r2 10\nr1 = add r2 r3\n}");
+        let r = func_body(&opcodes)("{ r1 = addi r2 10\nr1 = add r2 r3\n}");
         assert_eq!(
             r,
             Ok((
                 "",
                 vec![
-                    Instruction::Immediate(Immediate {
+                    Resolved(Instruction::Immediate(Immediate {
                         opcode: ImmediateOpcode::Addi,
                         rd: 1,
                         rs: 2,
                         value: 10
-                    }),
-                    Instruction::Register(Register {
+                    })),
+                    Resolved(Instruction::Register(Register {
                         opcode: RegisterOpcode::Add,
                         rd: 1,
                         rs1: 2,
                         rs2: 3
-                    })
+                    }))
                 ],
             ))
         )
@@ -769,54 +762,31 @@ mod tests {
     #[test]
     fn test_func() {
         let opcodes = AllOpcodes::new();
-        let func_ids = FxHashMap::default();
-        let r = func(&opcodes, &func_ids)("func foo { r1 = addi r2 10\nr1 = add r2 r3\n }");
+        let r = func(&opcodes)("func foo { r1 = addi r2 10\nr1 = add r2 r3\n }");
         assert_eq!(
             r,
             Ok((
                 "",
-                (
-                    "foo",
-                    Function::new(
-                        "foo".to_string(),
-                        &[
-                            Instruction::Immediate(Immediate {
-                                opcode: ImmediateOpcode::Addi,
-                                rd: 1,
-                                rs: 2,
-                                value: 10
-                            }),
-                            Instruction::Register(Register {
-                                opcode: RegisterOpcode::Add,
-                                rd: 1,
-                                rs1: 2,
-                                rs2: 3
-                            })
-                        ],
-                        0
-                    )
-                )
+                FunctionNode {
+                    name: "foo".to_string(),
+                    instruction_nodes: vec![
+                        Resolved(Instruction::Immediate(Immediate {
+                            opcode: ImmediateOpcode::Addi,
+                            rd: 1,
+                            rs: 2,
+                            value: 10
+                        })),
+                        Resolved(Instruction::Register(Register {
+                            opcode: RegisterOpcode::Add,
+                            rd: 1,
+                            rs1: 2,
+                            rs2: 3
+                        }))
+                    ],
+                    repeat: 0
+                }
             ))
         )
-    }
-
-    #[test]
-    fn test_func_body_declaration() {
-        let declaration = func_body_declaration("{ call bar\nr1 = add r2 r3\n }");
-        assert_eq!(declaration, Ok(("", ())));
-    }
-
-    #[test]
-    fn test_func_declaration() {
-        let declaration = func_declaration("func foo { call bar\nr1 = add r2 r3\n }");
-        assert_eq!(declaration, Ok(("", "foo")));
-    }
-
-    #[test]
-    fn test_func_names() {
-        let names =
-            func_names("func foo { call bar\nr1 = add r2 r3\n }\n func bar { r1 = add r2 r5\n }");
-        assert_eq!(names, Ok(("", vec!["foo", "bar"])));
     }
 
     // #[test]
