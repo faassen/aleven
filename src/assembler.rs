@@ -85,11 +85,7 @@ impl TryFrom<ProgramNode> for Program {
             .iter()
             .map(|function_node| function_node.resolve(&func_ids))
             .partition(Result::is_ok);
-        let errors: Vec<_> = errors
-            .into_iter()
-            .map(Result::unwrap_err)
-            .flatten()
-            .collect();
+        let errors: Vec<_> = errors.into_iter().flat_map(Result::unwrap_err).collect();
         if errors.is_empty() {
             let functions = functions.into_iter().map(Result::unwrap).collect();
             Ok(Program::from_functions(functions))
