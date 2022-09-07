@@ -30,13 +30,48 @@ enum InstructionNode {
 #[derive(Debug, PartialEq, Eq)]
 struct FunctionNode {
     name: String,
-    repeat: u16,
+    repeat: u8,
     instruction_nodes: Vec<InstructionNode>,
+}
+
+impl FunctionNode {
+    fn resolve(&self, func_ids: &FuncIds) -> Function {
+        let instructions: Vec<Instruction> = self
+            .instruction_nodes
+            .iter()
+            .map(|node| match node {
+                InstructionNode::Resolved(instruction) => instruction.clone(),
+                InstructionNode::UnresolvedCall(name) => {
+                    let id = func_ids.get(&name[..]).unwrap();
+                    Instruction::CallId(CallId {
+                        opcode: CallIdOpcode::Call,
+                        identifier: *id as u16,
+                    })
+                }
+            })
+            .collect();
+        Function::new(self.name.clone(), &instructions, self.repeat)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 struct ProgramNode {
     function_nodes: Vec<FunctionNode>,
+}
+
+impl From<ProgramNode> for Program {
+    fn from(program_node: ProgramNode) -> Program {
+        let mut func_ids = FuncIds::default();
+        for (id, function_node) in program_node.function_nodes.iter().enumerate() {
+            func_ids.insert(&function_node.name, id);
+        }
+        let functions = program_node
+            .function_nodes
+            .iter()
+            .map(|function_node| function_node.resolve(&func_ids))
+            .collect();
+        Program::from_functions(functions)
+    }
 }
 
 struct AllOpcodes {
@@ -345,16 +380,17 @@ fn func<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, Func
     }
 }
 
-fn funcs<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, Vec<FunctionNode>> {
+fn program<'a>(opcodes: &'a AllOpcodes) -> impl Fn(&'a str) -> ParseResult<'a, ProgramNode> {
     move |input: &'a str| {
-        terminated(
+        let (input, function_nodes) = terminated(
             many0(delimited(
                 whitespace_and_comments,
                 func(opcodes),
                 whitespace_and_comments,
             )),
             eof,
-        )(input)
+        )(input)?;
+        Ok((input, ProgramNode { function_nodes }))
     }
 }
 
@@ -375,12 +411,11 @@ pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
     Ok(instructions)
 }
 
-// pub fn parse_program(input: &str) -> Result<Program, String> {
-//     let opcodes = AllOpcodes::new();
-//     let (_, func_ids) = func_ids(input).map_err(|e| e.to_string())?;
-
-//     Ok(program)
-// }
+pub fn parse_program(input: &str) -> Result<Program, String> {
+    let opcodes = AllOpcodes::new();
+    let (_, program_node) = terminated(program(&opcodes), eof)(input).map_err(|e| e.to_string())?;
+    Ok(program_node.into())
+}
 
 #[cfg(test)]
 mod tests {
@@ -741,41 +776,81 @@ mod tests {
     }
 
     #[test]
-    fn test_funcs() {
+    fn test_program_node() {
         let opcodes = AllOpcodes::new();
-        let r = funcs(&opcodes)(
+        let r = program(&opcodes)(
             "func foo { call bar\nr1 = add r2 r3\n }\n func bar { r1 = add r2 r5\n }",
         );
         assert_eq!(
             r,
             Ok((
                 "",
-                vec![
-                    FunctionNode {
-                        name: "foo".to_string(),
-                        instruction_nodes: vec![
-                            InstructionNode::UnresolvedCall("bar".to_string()),
-                            Resolved(Instruction::Register(Register {
+                ProgramNode {
+                    function_nodes: vec![
+                        FunctionNode {
+                            name: "foo".to_string(),
+                            instruction_nodes: vec![
+                                InstructionNode::UnresolvedCall("bar".to_string()),
+                                Resolved(Instruction::Register(Register {
+                                    opcode: RegisterOpcode::Add,
+                                    rd: 1,
+                                    rs1: 2,
+                                    rs2: 3
+                                }))
+                            ],
+                            repeat: 0
+                        },
+                        FunctionNode {
+                            name: "bar".to_string(),
+                            instruction_nodes: vec![Resolved(Instruction::Register(Register {
                                 opcode: RegisterOpcode::Add,
                                 rd: 1,
                                 rs1: 2,
-                                rs2: 3
-                            }))
-                        ],
-                        repeat: 0
-                    },
-                    FunctionNode {
-                        name: "bar".to_string(),
-                        instruction_nodes: vec![Resolved(Instruction::Register(Register {
+                                rs2: 5
+                            }))],
+                            repeat: 0
+                        }
+                    ]
+                }
+            ))
+        )
+    }
+
+    #[test]
+    fn test_parse_program() {
+        let r = parse_program(
+            "func foo { call bar\nr1 = add r2 r3\n }\n func bar { r1 = add r2 r5\n }",
+        );
+        assert_eq!(
+            r,
+            Ok(Program::from_functions(vec![
+                Function::new(
+                    "foo".to_string(),
+                    &[
+                        Instruction::CallId(CallId {
+                            opcode: CallIdOpcode::Call,
+                            identifier: 1
+                        }),
+                        Instruction::Register(Register {
                             opcode: RegisterOpcode::Add,
                             rd: 1,
                             rs1: 2,
-                            rs2: 5
-                        }))],
-                        repeat: 0
-                    }
-                ]
-            ))
+                            rs2: 3
+                        })
+                    ],
+                    0
+                ),
+                Function::new(
+                    "bar".to_string(),
+                    &[Instruction::Register(Register {
+                        opcode: RegisterOpcode::Add,
+                        rd: 1,
+                        rs1: 2,
+                        rs2: 5
+                    })],
+                    0
+                )
+            ]))
         )
     }
 

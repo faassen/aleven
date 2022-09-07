@@ -6,7 +6,7 @@ use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
 use rustc_hash::FxHashSet;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Program {
     functions: Vec<Function>,
 }
