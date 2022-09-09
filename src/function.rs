@@ -155,7 +155,11 @@ impl Function {
                 }
             }
         }
-        Function::new(self.name.to_string(), &new_instructions, self.repeat)
+        Function {
+            name: self.name.clone(),
+            instructions: new_instructions,
+            repeat: self.repeat,
+        }
     }
 
     fn targets(instructions: &[Instruction]) -> FxHashMap<u8, usize> {
@@ -182,6 +186,33 @@ impl Function {
                 return None;
             }
             index += 1;
+        }
+    }
+
+    pub fn restrict_call_budget<F>(&self, f: &mut F) -> Function
+    where
+        F: FnMut(u16) -> bool,
+    {
+        let mut new_instructions = Vec::new();
+        for instruction in self.instructions.iter() {
+            match instruction {
+                Instruction::CallId(CallId {
+                    opcode: CallIdOpcode::Call,
+                    identifier,
+                }) => {
+                    if f(*identifier) {
+                        new_instructions.push(instruction.clone());
+                    }
+                }
+                _ => {
+                    new_instructions.push(instruction.clone());
+                }
+            }
+        }
+        Function {
+            name: self.name.clone(),
+            instructions: new_instructions,
+            repeat: self.repeat,
         }
     }
 }

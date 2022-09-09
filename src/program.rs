@@ -5,9 +5,9 @@ use crate::lang::{Instruction, Processor};
 use crate::llvm::CodeGen;
 use crate::llvm::ProgramFunc;
 use inkwell::execution_engine::JitFunction;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Program {
     functions: Vec<Function>,
 }
@@ -40,7 +40,7 @@ impl Program {
         self.clean_calls_helper(0, &seen);
     }
 
-    pub fn clean_calls_helper(&mut self, call_id: u16, seen: &FxHashSet<u16>) {
+    fn clean_calls_helper(&mut self, call_id: u16, seen: &FxHashSet<u16>) {
         let function = &self.functions[call_id as usize];
         let converted_function = function.cleanup_calls(&self.functions, seen);
 
@@ -50,6 +50,38 @@ impl Program {
             self.clean_calls_helper(sub_call_id, &seen);
         }
         self.functions[call_id as usize] = converted_function;
+    }
+
+    pub fn restrict_call_budget(&mut self, budget: u64) {
+        let mut budget_total = budget;
+        let function = &self.functions[0];
+        let cost = function.get_repeat() as u64;
+        let mut restricted_functions = FxHashMap::default();
+        self.restrict_call_budget_helper(0, cost, &mut budget_total, &mut restricted_functions);
+        for (id, function) in restricted_functions {
+            self.functions[id as usize] = function;
+        }
+    }
+
+    fn restrict_call_budget_helper(
+        &self,
+        call_id: u16,
+        cost: u64,
+        budget: &mut u64,
+        restricted_functions: &mut FxHashMap<u16, Function>,
+    ) {
+        let restricted_function =
+            self.functions[call_id as usize].restrict_call_budget(&mut |call_id| {
+                let called = &self.functions[call_id as usize];
+                let call_cost = cost * called.get_repeat() as u64;
+                if call_cost > *budget {
+                    return false;
+                }
+                *budget -= call_cost;
+                self.restrict_call_budget_helper(call_id, call_cost, budget, restricted_functions);
+                true
+            });
+        restricted_functions.insert(call_id, restricted_function);
     }
 
     pub fn interpret(&self, memory: &mut [u8]) {
@@ -100,6 +132,7 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::disassembler::disassemble;
     use crate::lang::{
         BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Immediate, ImmediateOpcode,
     };
@@ -116,14 +149,7 @@ mod tests {
 
         assert_eq!(
             program.functions,
-            vec![Function::new(
-                "unknown".to_string(),
-                &[Instruction::BranchTarget(BranchTarget {
-                    opcode: BranchTargetOpcode::Target,
-                    identifier: 0
-                })],
-                0
-            )]
+            vec![Function::new("unknown".to_string(), &[], 0)]
         );
     }
 
@@ -151,26 +177,13 @@ mod tests {
             vec![
                 Function::new(
                     "unknown".to_string(),
-                    &[
-                        Instruction::CallId(CallId {
-                            opcode: CallIdOpcode::Call,
-                            identifier: 1
-                        }),
-                        Instruction::BranchTarget(BranchTarget {
-                            opcode: BranchTargetOpcode::Target,
-                            identifier: 0
-                        })
-                    ],
+                    &[Instruction::CallId(CallId {
+                        opcode: CallIdOpcode::Call,
+                        identifier: 1
+                    }),],
                     0
                 ),
-                Function::new(
-                    "unknown".to_string(),
-                    &[Instruction::BranchTarget(BranchTarget {
-                        opcode: BranchTargetOpcode::Target,
-                        identifier: 0
-                    })],
-                    0
-                ),
+                Function::new("unknown".to_string(), &[], 0),
             ]
         );
     }
@@ -223,35 +236,18 @@ mod tests {
                             opcode: CallIdOpcode::Call,
                             identifier: 2
                         }),
-                        Instruction::BranchTarget(BranchTarget {
-                            opcode: BranchTargetOpcode::Target,
-                            identifier: 0
-                        })
                     ],
                     0
                 ),
+                Function::new("unknown".to_string(), &[], 0),
                 Function::new(
                     "unknown".to_string(),
-                    &[Instruction::BranchTarget(BranchTarget {
-                        opcode: BranchTargetOpcode::Target,
-                        identifier: 0
-                    })],
-                    0
-                ),
-                Function::new(
-                    "unknown".to_string(),
-                    &[
-                        Instruction::Immediate(Immediate {
-                            opcode: ImmediateOpcode::Addi,
-                            rs: 0,
-                            rd: 0,
-                            value: 1,
-                        },),
-                        Instruction::BranchTarget(BranchTarget {
-                            opcode: BranchTargetOpcode::Target,
-                            identifier: 0
-                        })
-                    ],
+                    &[Instruction::Immediate(Immediate {
+                        opcode: ImmediateOpcode::Addi,
+                        rs: 0,
+                        rd: 0,
+                        value: 1,
+                    },),],
                     0
                 )
             ]
@@ -270,19 +266,12 @@ mod tests {
 
         assert_eq!(
             program.functions,
-            vec![Function::new(
-                "unknown".to_string(),
-                &[Instruction::BranchTarget(BranchTarget {
-                    opcode: BranchTargetOpcode::Target,
-                    identifier: 0
-                })],
-                0
-            )]
+            vec![Function::new("unknown".to_string(), &[], 0)]
         );
     }
 
     #[test]
-    fn test_function_costs_no_repeat() {
+    fn test_restrict_costs_no_repeat() {
         let program = parse_program(
             "
         func main {
@@ -301,13 +290,23 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(program.get_function_cost(0), 2);
-        assert_eq!(program.get_function_cost(1), 1);
-        assert_eq!(program.get_function_cost(2), 1);
+        let mut budget_1 = program.clone();
+        budget_1.restrict_call_budget(1);
+        assert_eq!(
+            disassemble(budget_1.functions[0].get_instructions()),
+            "call f1\ntarget t0"
+        );
+
+        let mut budget_2 = program;
+        budget_2.restrict_call_budget(2);
+        assert_eq!(
+            disassemble(budget_2.functions[0].get_instructions()),
+            "call f1\ncall f2\ntarget t0"
+        );
     }
 
     #[test]
-    fn test_function_costs_with_repeat_simple() {
+    fn test_restrict_costs_with_repeat_simple() {
         let program = parse_program(
             "
         func main {
@@ -315,44 +314,152 @@ mod tests {
             call beta
         }
 
-        repeat alpha 5 {
+        repeat alpha 3 {
             r1 = addi r0 1
         }
 
-        repeat beta 6 {
+        repeat beta 4 {
             r1 = addi r0 1
         }
         ",
         )
         .unwrap();
 
-        assert_eq!(program.get_function_cost(0), 11);
-        assert_eq!(program.get_function_cost(1), 5);
-        assert_eq!(program.get_function_cost(2), 6);
+        let mut budget_1 = program.clone();
+        budget_1.restrict_call_budget(1);
+        assert_eq!(
+            disassemble(budget_1.functions[0].get_instructions()),
+            "target t0"
+        );
+
+        let mut budget_2 = program.clone();
+        budget_2.restrict_call_budget(2);
+        assert_eq!(
+            disassemble(budget_2.functions[0].get_instructions()),
+            "target t0"
+        );
+
+        let mut budget_3 = program.clone();
+        budget_3.restrict_call_budget(3);
+        assert_eq!(
+            disassemble(budget_3.functions[0].get_instructions()),
+            "call f1\ntarget t0"
+        );
+
+        let mut budget_4 = program.clone();
+        budget_4.restrict_call_budget(4);
+        assert_eq!(
+            disassemble(budget_4.functions[0].get_instructions()),
+            "call f1\ntarget t0"
+        );
+
+        let mut budget_5 = program;
+        budget_5.restrict_call_budget(7);
+        assert_eq!(
+            disassemble(budget_5.functions[0].get_instructions()),
+            "call f1\ncall f2\ntarget t0"
+        );
     }
 
     #[test]
-    fn test_function_costs_with_repeat_nested() {
+    fn test_restrict_costs_with_repeat_nested() {
         let program = parse_program(
             "
-        repeat main 10 {
+        func main {
             call alpha
             call beta
         }
 
-        repeat alpha 5 {
+        repeat alpha 3 {
+            call gamma
+        }
+
+        repeat beta 4 {
             r1 = addi r0 1
         }
 
-        repeat beta 6 {
+        repeat gamma 2 {
             r1 = addi r0 1
         }
         ",
         )
         .unwrap();
 
-        assert_eq!(program.get_function_cost(0), 110);
-        assert_eq!(program.get_function_cost(1), 5);
-        assert_eq!(program.get_function_cost(2), 6);
+        let mut budget_1 = program.clone();
+        budget_1.restrict_call_budget(1);
+        assert_eq!(
+            disassemble(budget_1.functions[0].get_instructions()),
+            "target t0"
+        );
+
+        let mut budget_2 = program.clone();
+        budget_2.restrict_call_budget(3);
+        assert_eq!(
+            disassemble(budget_2.functions[0].get_instructions()),
+            "call f1\ntarget t0"
+        );
+        assert_eq!(
+            disassemble(budget_2.functions[1].get_instructions()),
+            "target t0"
+        );
+
+        let mut budget_3 = program;
+        budget_3.restrict_call_budget(9);
+        assert_eq!(
+            disassemble(budget_3.functions[0].get_instructions()),
+            "call f1\ntarget t0"
+        );
+        assert_eq!(
+            disassemble(budget_3.functions[1].get_instructions()),
+            "call f3\ntarget t0"
+        );
+    }
+
+    #[test]
+    fn test_restrict_costs_multiple_calls_same_function() {
+        let program = parse_program(
+            "
+        func main {
+            call alpha
+            call alpha
+        }
+
+        repeat alpha 3 {
+            call gamma
+        }
+
+        repeat gamma 2 {
+            r1 = addi r0 1
+        }
+        ",
+        )
+        .unwrap();
+
+        // we can call the first alpha, and the second alpha, but not the gamma
+        // in the second alpha. in this case we cannot call gamma at all, as
+        // the least budget when we last call it determines whether that call succeeds
+        // 3 + 6 + 3 = 12
+        let mut budget_1 = program.clone();
+        budget_1.restrict_call_budget(12);
+        assert_eq!(
+            disassemble(budget_1.functions[0].get_instructions()),
+            "call f1\ncall f1\ntarget t0"
+        );
+        assert_eq!(
+            disassemble(budget_1.functions[1].get_instructions()),
+            "target t0"
+        );
+
+        // now we give it sufficient budget to call the gamma in the second alpha
+        let mut budget_2 = program;
+        budget_2.restrict_call_budget(18);
+        assert_eq!(
+            disassemble(budget_2.functions[0].get_instructions()),
+            "call f1\ncall f1\ntarget t0"
+        );
+        assert_eq!(
+            disassemble(budget_2.functions[1].get_instructions()),
+            "call f2\ntarget t0"
+        );
     }
 }

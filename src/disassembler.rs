@@ -25,14 +25,14 @@ impl Disassembler for Instruction {
             }
             Branch(branch) => {
                 format!(
-                    "{} r{} r{} {}",
+                    "{} r{} r{} t{}",
                     opcode, branch.rs1, branch.rs2, branch.target
                 )
             }
             BranchTarget(branch_target) => {
-                format!("{} {}", opcode, branch_target.identifier)
+                format!("{} t{}", opcode, branch_target.identifier)
             }
-            CallId(call_id) => format!("{} {}", opcode, call_id.identifier),
+            CallId(call_id) => format!("{} f{}", opcode, call_id.identifier),
         }
     }
 }
