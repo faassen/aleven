@@ -9,7 +9,6 @@ pub type Run = fn(&Program, &mut [u8]);
 pub type Runner = fn(&[(u8, &[Instruction])], &mut [u8]);
 pub type RunnerFunc = fn(&[Instruction], &mut [u8]);
 pub type RunnerProgram = fn(&[&[Instruction]], &mut [u8]);
-pub type RepeatRunnerFunc = fn(&[Instruction], &mut [u8], u8);
 
 pub fn interpreted(program: &Program, memory: &mut [u8]) {
     program.interpret(memory);
@@ -57,12 +56,4 @@ pub fn run_llvm_func(instructions: &[Instruction], memory: &mut [u8]) {
 
 pub fn run_interpreter_func(instructions: &[Instruction], memory: &mut [u8]) {
     run_interpreter_program(&[instructions], memory);
-}
-
-pub fn run_llvm_repeat_func(instructions: &[Instruction], memory: &mut [u8], repeat: u8) {
-    run_llvm(&[(repeat, instructions)], memory);
-}
-
-pub fn run_interpreter_repeat_func(instructions: &[Instruction], memory: &mut [u8], repeat: u8) {
-    run_interpreter(&[(repeat, instructions)], memory);
 }
