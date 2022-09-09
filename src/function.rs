@@ -11,7 +11,7 @@ use rustc_hash::FxHashSet;
 pub struct Function {
     name: String,
     instructions: Vec<Instruction>,
-    pub repeat: u8,
+    repeat: u8,
 }
 
 impl Function {
@@ -25,7 +25,7 @@ impl Function {
 
     pub fn interpret(&self, memory: &mut [u8], processor: &mut Processor, functions: &[Function]) {
         let targets = Function::targets(&self.instructions);
-        let repeat = if self.repeat > 0 { self.repeat } else { 1 };
+        let repeat = self.get_repeat();
         for _i in 0..repeat {
             processor.execute(&self.instructions, memory, &targets, functions);
         }
@@ -40,7 +40,7 @@ impl Function {
     ) -> FunctionValue<'ctx> {
         codegen.compile_function(
             id,
-            if self.repeat > 0 { self.repeat } else { 1 },
+            self.get_repeat(),
             &self.instructions,
             memory_len,
             functions,
@@ -72,7 +72,15 @@ impl Function {
         &self.instructions
     }
 
-    pub fn get_call_ids(&self) -> FxHashSet<u16> {
+    pub fn get_repeat(&self) -> u8 {
+        if self.repeat > 0 {
+            self.repeat
+        } else {
+            1
+        }
+    }
+
+    pub fn get_call_ids(&self) -> impl Iterator<Item = u16> + '_ {
         self.instructions
             .iter()
             .filter_map(|instruction| match instruction {
@@ -82,7 +90,10 @@ impl Function {
                 }) => Some(*identifier),
                 _ => None,
             })
-            .collect::<FxHashSet<u16>>()
+    }
+
+    pub fn get_call_id_set(&self) -> FxHashSet<u16> {
+        self.get_call_ids().collect::<FxHashSet<u16>>()
     }
 
     fn cleanup_branches(instructions: &[Instruction]) -> Vec<Instruction> {

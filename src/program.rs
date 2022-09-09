@@ -1,3 +1,4 @@
+use crate::assembler::parse_program;
 use crate::cache::FunctionValueCache;
 use crate::function::Function;
 use crate::lang::{Instruction, Processor};
@@ -45,7 +46,7 @@ impl Program {
 
         let mut seen = seen.clone();
         seen.insert(call_id);
-        for sub_call_id in converted_function.get_call_ids() {
+        for sub_call_id in converted_function.get_call_id_set() {
             self.clean_calls_helper(sub_call_id, &seen);
         }
         self.functions[call_id as usize] = converted_function;
@@ -79,6 +80,20 @@ impl Program {
         codegen
             .compile_program(program_id, &dependency_map)
             .unwrap()
+    }
+
+    pub fn get_function_cost(&self, id: u16) -> u64 {
+        let function = &self.functions[id as usize];
+
+        let call_cost = function
+            .get_call_ids()
+            .map(|id| self.get_function_cost(id))
+            .sum::<u64>();
+        if call_cost > 0 {
+            call_cost * function.get_repeat() as u64
+        } else {
+            function.get_repeat() as u64
+        }
     }
 }
 
@@ -264,5 +279,80 @@ mod tests {
                 0
             )]
         );
+    }
+
+    #[test]
+    fn test_function_costs_no_repeat() {
+        let program = parse_program(
+            "
+        func main {
+            call alpha
+            call beta
+        }
+
+        func alpha {
+            r1 = addi r0 1
+        }
+
+        func beta {
+            r1 = addi r0 1
+        }
+        ",
+        )
+        .unwrap();
+
+        assert_eq!(program.get_function_cost(0), 2);
+        assert_eq!(program.get_function_cost(1), 1);
+        assert_eq!(program.get_function_cost(2), 1);
+    }
+
+    #[test]
+    fn test_function_costs_with_repeat_simple() {
+        let program = parse_program(
+            "
+        func main {
+            call alpha
+            call beta
+        }
+
+        repeat alpha 5 {
+            r1 = addi r0 1
+        }
+
+        repeat beta 6 {
+            r1 = addi r0 1
+        }
+        ",
+        )
+        .unwrap();
+
+        assert_eq!(program.get_function_cost(0), 11);
+        assert_eq!(program.get_function_cost(1), 5);
+        assert_eq!(program.get_function_cost(2), 6);
+    }
+
+    #[test]
+    fn test_function_costs_with_repeat_nested() {
+        let program = parse_program(
+            "
+        repeat main 10 {
+            call alpha
+            call beta
+        }
+
+        repeat alpha 5 {
+            r1 = addi r0 1
+        }
+
+        repeat beta 6 {
+            r1 = addi r0 1
+        }
+        ",
+        )
+        .unwrap();
+
+        assert_eq!(program.get_function_cost(0), 110);
+        assert_eq!(program.get_function_cost(1), 5);
+        assert_eq!(program.get_function_cost(2), 6);
     }
 }

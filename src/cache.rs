@@ -47,7 +47,7 @@ impl<'ctx> FunctionValueCache<'ctx> {
     ) -> FxHashMap<CallId, (FunctionValueId, FunctionValue<'ctx>)> {
         // given everything this function calls, compile dependencies
         let function = &program.get_function(call_id);
-        let call_ids = function.get_call_ids();
+        let call_ids = function.get_call_id_set();
 
         let mut result = FxHashMap::default();
         for dependency_call_id in &call_ids {
@@ -61,7 +61,7 @@ impl<'ctx> FunctionValueCache<'ctx> {
             call_ids.iter().map(|call_id| result[call_id].0).collect();
 
         let cache_key = (
-            function.repeat,
+            function.get_repeat(),
             function.get_instructions(),
             function_value_ids,
         );
