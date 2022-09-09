@@ -1,4 +1,3 @@
-use crate::assembler::parse_program;
 use crate::cache::FunctionValueCache;
 use crate::function::Function;
 use crate::lang::{Instruction, Processor};
@@ -113,29 +112,14 @@ impl Program {
             .compile_program(program_id, &dependency_map)
             .unwrap()
     }
-
-    pub fn get_function_cost(&self, id: u16) -> u64 {
-        let function = &self.functions[id as usize];
-
-        let call_cost = function
-            .get_call_ids()
-            .map(|id| self.get_function_cost(id))
-            .sum::<u64>();
-        if call_cost > 0 {
-            call_cost * function.get_repeat() as u64
-        } else {
-            function.get_repeat() as u64
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assembler::parse_program;
     use crate::disassembler::disassemble;
-    use crate::lang::{
-        BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Immediate, ImmediateOpcode,
-    };
+    use crate::lang::{CallId, CallIdOpcode, Immediate, ImmediateOpcode};
 
     #[test]
     fn test_call_ids_no_recursion() {
