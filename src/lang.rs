@@ -1,3 +1,5 @@
+use std::ops::Rem;
+
 use crate::function::Function;
 use byteorder::{ByteOrder, LittleEndian};
 use rustc_hash::FxHashMap;
@@ -154,6 +156,24 @@ pub enum CallIdOpcode {
     Call = CALL_OPCODE_START as isize,
 }
 
+const SWITCH_OPCODE_START: usize = CALL_OPCODE_START + CallIdOpcode::COUNT;
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    Hash,
+    Display,
+    EnumIter,
+    EnumCountMacro,
+    FromPrimitive,
+    ToPrimitive,
+)]
+pub enum SwitchOpcode {
+    Switch = SWITCH_OPCODE_START as isize,
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Immediate {
     pub opcode: ImmediateOpcode,
@@ -207,6 +227,14 @@ pub struct CallId {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Switch {
+    pub opcode: SwitchOpcode,
+    pub rs: u8,
+    pub identifier: u16,
+    pub amount: u8,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Instruction {
     Immediate(Immediate),
     Load(Load),
@@ -215,6 +243,7 @@ pub enum Instruction {
     Branch(Branch),
     BranchTarget(BranchTarget),
     CallId(CallId),
+    Switch(Switch),
 }
 
 #[derive(Debug)]
@@ -572,6 +601,23 @@ impl Instruction {
                     }
                 }
             }
+            Instruction::Switch(switch) => {
+                let value = processor.registers[switch.rs as usize] as u16;
+                let identifier = switch.identifier;
+                let amount = switch.amount;
+                if amount == 0 {
+                    return;
+                }
+                let calculated_identifier = identifier + value.rem(amount as u16) as u16;
+                if calculated_identifier >= functions.len() as u16 {
+                    return;
+                }
+                let function = &functions[calculated_identifier as usize];
+                processor.call_stack.push(processor.pc);
+                processor.pc = 0;
+                function.interpret(memory, processor, functions);
+                processor.pc = processor.call_stack.pop().unwrap();
+            }
         }
     }
 
@@ -585,6 +631,7 @@ impl Instruction {
             Branch(branch) => branch.opcode.to_string(),
             BranchTarget(target) => target.opcode.to_string(),
             CallId(call_id) => call_id.opcode.to_string(),
+            Switch(switch) => switch.opcode.to_string(),
         }
     }
 }

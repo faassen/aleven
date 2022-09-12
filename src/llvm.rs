@@ -308,6 +308,9 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                     }
                 }
+                Instruction::Switch(switch) => {
+                    // nothing yet
+                }
             }
             if !branched {
                 self.builder.build_unconditional_branch(next_instr_block);

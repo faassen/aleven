@@ -33,6 +33,10 @@ impl Disassembler for Instruction {
                 format!("{} t{}", opcode, branch_target.identifier)
             }
             CallId(call_id) => format!("{} f{}", opcode, call_id.identifier),
+            Switch(switch) => format!(
+                "{} r{} f{} {}",
+                opcode, switch.rs, switch.identifier, switch.amount
+            ),
         }
     }
 }
