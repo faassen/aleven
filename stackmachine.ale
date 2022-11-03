@@ -1,14 +1,13 @@
 func main {
-    r30 = lh r20 0
-    r31 = lh r20 1
+    r30 = lh r0 0
+    r31 = lh r0 1
     call loop
-    sh r20 0 = r30
-    sh r20 1 = r31
+    sh r0 0 = r30
+    sh r0 1 = r31
 }
 
 repeat loop 255 {
     r1 = lb r30 0
-
     # dispatch to stack instructions
     # would be nicer to have switch instruction but difficult to implement
     r2 = addi r0 0
@@ -48,32 +47,35 @@ repeat loop 255 {
 # r30 is pc
 # r31 is stack pointer
 
+
 func n0 {
-    r31 = addi r31 1
     sh r31 0 = r0
+    r31 = addi r31 1
 }
 
 func n1 {
-    r31 = addi r31 1
     r1 = addi r0 1
     sh r31 0 = r1
+    r31 = addi r31 1
 }
 
-fn dup {
+func dup {
     r1 = lh r31 0
     r31 = addi r31 1
     sh r31 0 = r1 
 }
 
-fn add {
+func add {
+    r31 = addi r31 -1
     r1 = lh r31 0
     r31 = addi r31 -1
     r2 = lh r31 0
     r3 = add r1 r2
     sh r31 0 = r3
+    r31 = addi r31 1
 }
 
-fn eq {
+func eq {
     r1 = lh r31 0
     r31 = addi r31 -1
     r2 = lh r31 0
@@ -86,13 +88,13 @@ fn eq {
     sh r31 0 = r1
 }
 
-fn read {
+func read {
     r1 = lh r31 0
     r2 = lh r1 0
-    sh r31 r2
+    sh r31 0 = r2
 }
 
-fn write {
+func write {
     r1 = lh r31 0
     r31 = addi r31 -1
     r2 = lh r31 0
