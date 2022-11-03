@@ -8,8 +8,38 @@ func main {
 
 repeat loop 255 {
     r1 = lb r30 0
+
     # dispatch to stack instructions
-    switch r1 n0 20
+    # would be nicer to have switch instruction but difficult to implement
+    r2 = addi r0 0
+    bne r1 r2 s1
+    call n0
+    target s1
+    r2 = addi r2 1
+    bne r1 r2 s2
+    call n1
+    target s2
+    r2 = addi r2 1
+    bne r1 r2 s3
+    call dup
+    target s3
+    r2 = addi r2 1
+    bne r1 r2 s4
+    call add
+    target s4
+    r2 = addi r2 1
+    bne r1 r2 s5
+    call eq   
+    target s5
+    r2 = addi r2 1
+    bne r1 r2 s6
+    call read
+    target s6
+    r2 = addi r2 1
+    bne r1 r2 s7
+    call write
+    target s7
+
     r30 = addi r30 1
 }
 
