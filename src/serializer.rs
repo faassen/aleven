@@ -1,7 +1,6 @@
 use crate::lang::{
     Branch, BranchOpcode, BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Immediate,
     ImmediateOpcode, Instruction, Load, LoadOpcode, Register, RegisterOpcode, Store, StoreOpcode,
-    Switch, SwitchOpcode,
 };
 use byteorder::{ByteOrder, LittleEndian};
 use num::{FromPrimitive, ToPrimitive};
@@ -14,7 +13,7 @@ enum OpcodeWithType {
     Branch(BranchOpcode),
     BranchTarget(BranchTargetOpcode),
     CallId(CallIdOpcode),
-    Switch(SwitchOpcode),
+    // Switch(SwitchOpcode),
 }
 
 impl OpcodeWithType {
@@ -27,7 +26,7 @@ impl OpcodeWithType {
             OpcodeWithType::Branch(_opcode) => Branch::size(),
             OpcodeWithType::BranchTarget(_opcode) => BranchTarget::size(),
             OpcodeWithType::CallId(_opcode) => CallId::size(),
-            OpcodeWithType::Switch(_opcode) => Switch::size(),
+            // OpcodeWithType::Switch(_opcode) => Switch::size(),
         }
     }
 
@@ -51,10 +50,9 @@ impl OpcodeWithType {
             }
             OpcodeWithType::CallId(opcode) => {
                 Instruction::CallId(CallId::deserialize(*opcode, values))
-            }
-            OpcodeWithType::Switch(opcode) => {
-                Instruction::Switch(Switch::deserialize(*opcode, values))
-            }
+            } // OpcodeWithType::Switch(opcode) => {
+              //     Instruction::Switch(Switch::deserialize(*opcode, values))
+              // }
         }
     }
 }
@@ -69,7 +67,7 @@ impl From<&Instruction> for u8 {
             Instruction::Branch(Branch { opcode, .. }) => opcode.to_u8().unwrap(),
             Instruction::BranchTarget(BranchTarget { opcode, .. }) => opcode.to_u8().unwrap(),
             Instruction::CallId(CallId { opcode, .. }) => opcode.to_u8().unwrap(),
-            Instruction::Switch(Switch { opcode, .. }) => opcode.to_u8().unwrap(),
+            // Instruction::Switch(Switch { opcode, .. }) => opcode.to_u8().unwrap(),
         }
     }
 }
@@ -83,7 +81,7 @@ fn decode_opcode(value: u8) -> Option<OpcodeWithType> {
         .or_else(|| BranchOpcode::from_u8(value).map(OpcodeWithType::Branch))
         .or_else(|| BranchTargetOpcode::from_u8(value).map(OpcodeWithType::BranchTarget))
         .or_else(|| CallIdOpcode::from_u8(value).map(OpcodeWithType::CallId))
-        .or_else(|| SwitchOpcode::from_u8(value).map(OpcodeWithType::Switch))
+    // .or_else(|| SwitchOpcode::from_u8(value).map(OpcodeWithType::Switch))
 }
 
 pub struct Serializer {}
@@ -109,7 +107,7 @@ impl ValueSerializer for Instruction {
             Branch(branch) => branch.serialize(output),
             BranchTarget(branch_target) => branch_target.serialize(output),
             CallId(call_id) => call_id.serialize(output),
-            Switch(switch) => switch.serialize(output),
+            // Switch(switch) => switch.serialize(output),
         }
     }
 }
@@ -298,27 +296,27 @@ impl ValueDeserializer<CallIdOpcode> for CallId {
     }
 }
 
-impl ValueSerializer for Switch {
-    fn serialize(&self, output: &mut Vec<u8>) {
-        output.push(self.rs);
-        output.extend(u16_to_bytes(self.identifier));
-        output.push(self.amount);
-    }
-}
+// impl ValueSerializer for Switch {
+//     fn serialize(&self, output: &mut Vec<u8>) {
+//         output.push(self.rs);
+//         output.extend(u16_to_bytes(self.identifier));
+//         output.push(self.amount);
+//     }
+// }
 
-impl ValueDeserializer<SwitchOpcode> for Switch {
-    fn size() -> usize {
-        4
-    }
-    fn deserialize(opcode: SwitchOpcode, input: &[u8]) -> Self {
-        Switch {
-            opcode,
-            rs: input[0],
-            identifier: bytes_to_u16(&input[1..3]),
-            amount: input[3],
-        }
-    }
-}
+// impl ValueDeserializer<SwitchOpcode> for Switch {
+//     fn size() -> usize {
+//         4
+//     }
+//     fn deserialize(opcode: SwitchOpcode, input: &[u8]) -> Self {
+//         Switch {
+//             opcode,
+//             rs: input[0],
+//             identifier: bytes_to_u16(&input[1..3]),
+//             amount: input[3],
+//         }
+//     }
+// }
 
 impl ValueSerializer for CallId {
     fn serialize(&self, output: &mut Vec<u8>) {

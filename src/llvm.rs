@@ -307,10 +307,21 @@ impl<'ctx> CodeGen<'ctx> {
                             self.compile_call(call_id, memory_ptr, registers_ptr, functions);
                         }
                     }
-                }
-                Instruction::Switch(switch) => {
-                    // nothing yet
-                }
+                } // Instruction::Switch(switch) => {
+                  //     use SwitchOpcode::*;
+                  //     match switch.opcode {
+                  //         Switch => {
+                  //             self.compile_switch(
+                  //                 registers,
+                  //                 switch,
+                  //                 next_instr_block,
+                  //                 &targets,
+                  //                 function,
+                  //             );
+                  //         }
+                  //     }
+                  //     // nothing yet
+                  // }
             }
             if !branched {
                 self.builder.build_unconditional_branch(next_instr_block);
@@ -914,6 +925,60 @@ impl<'ctx> CodeGen<'ctx> {
             "call",
         );
     }
+
+    // fn compile_switch(
+    //     &self,
+    //     switch: &Switch,
+    //     registers: &Registers,
+    //     memory_ptr: PointerValue,
+    //     registers_ptr: PointerValue,
+    //     function: FunctionValue,
+    //     functions: &FxHashMap<u16, FunctionValue>,
+    // ) {
+    //     let switch_block = self.context.append_basic_block(function, "switch");
+    //     self.builder.build_unconditional_branch(switch_block);
+    //     self.builder.position_at_end(switch_block);
+
+    //     let value_ptr = registers.get(switch.rs);
+    //     let value = self
+    //         .builder
+    //         .build_load(value_ptr, "rs1_value")
+    //         .into_int_value();
+    //     let identifier = switch.identifier;
+    //     let amount = switch.amount;
+    //     if amount == 0 {
+    //         return;
+    //     }
+    //     let amount = self.context.i16_type().const_int(amount as u64, false);
+
+    //     let constrained_value =
+    //         self.builder
+    //             .build_int_unsigned_rem(value, amount, "constrained_value");
+    //     let calculated_indentifier = self.builder.build_int_add(
+    //         self.context.i16_type().const_int(identifier as u64, false),
+    //         constrained_value,
+    //         "calculated_indentifier",
+    //     );
+
+    //     let cond = self.builder.build_int_compare(
+    //         IntPredicate::UGE,
+    //         calculated_indentifier,
+    //         self.context
+    //             .i16_type()
+    //             .const_int(functions.len() as u64, false),
+    //         "uge",
+    //     );
+    //     let main_block = self.context.append_basic_block(function, "main");
+    //     let end_block = self.context.append_basic_block(function, "end_switch");
+    //     self.builder
+    //         .build_conditional_branch(cond, end_block, main_block);
+
+    //     self.builder.position_at_end(main_block);
+    //     // cannot build this as we have no run-time access to the function fx map...
+    //     // it would require a function map similar to the registers
+    //     self.builder.build_unconditional_branch(end_block);
+    //     self.builder.position_at_end(end_block);
+    // }
 }
 
 pub fn main() -> Result<(), Box<dyn Error>> {

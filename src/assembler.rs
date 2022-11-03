@@ -1,8 +1,21 @@
 use crate::function::Function;
 use crate::lang::{
-    Branch, BranchOpcode, BranchTarget, BranchTargetOpcode, CallId, CallIdOpcode, Immediate,
-    ImmediateOpcode, Instruction, Load, LoadOpcode, Register, RegisterOpcode, Store, StoreOpcode,
-    Switch, SwitchOpcode,
+    Branch,
+    BranchOpcode,
+    BranchTarget,
+    BranchTargetOpcode,
+    CallId,
+    CallIdOpcode,
+    Immediate,
+    ImmediateOpcode,
+    Instruction,
+    Load,
+    LoadOpcode,
+    Register,
+    RegisterOpcode,
+    Store,
+    StoreOpcode,
+    // Switch, SwitchOpcode,
 };
 use crate::program::Program;
 use nom::branch::alt;
@@ -27,7 +40,7 @@ enum InstructionNode {
     UnresolvedCall(String),
     UnresolvedBranch(BranchOpcode, u8, u8, String),
     UnresolvedTarget(String),
-    UnresolvedSwitch(u8, String, u8),
+    // UnresolvedSwitch(u8, String, u8),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -94,20 +107,19 @@ impl FunctionNode {
                     } else {
                         Err(ResolutionError::Call(name.clone()))
                     }
-                }
-                InstructionNode::UnresolvedSwitch(rs, name, amount) => {
-                    let id = func_ids.get(&name[..]);
-                    if let Some(id) = id {
-                        Ok(Instruction::Switch(Switch {
-                            opcode: SwitchOpcode::Switch,
-                            rs: *rs,
-                            identifier: *id as u16,
-                            amount: *amount,
-                        }))
-                    } else {
-                        Err(ResolutionError::Switch(name.clone()))
-                    }
-                }
+                } // InstructionNode::UnresolvedSwitch(rs, name, amount) => {
+                  //     let id = func_ids.get(&name[..]);
+                  //     if let Some(id) = id {
+                  //         Ok(Instruction::Switch(Switch {
+                  //             opcode: SwitchOpcode::Switch,
+                  //             rs: *rs,
+                  //             identifier: *id as u16,
+                  //             amount: *amount,
+                  //         }))
+                  //     } else {
+                  //         Err(ResolutionError::Switch(name.clone()))
+                  //     }
+                  // }
             })
             .partition(Result::is_ok);
         if errors.is_empty() {
@@ -155,7 +167,7 @@ struct AllOpcodes {
     branch_opcodes: Opcodes<BranchOpcode>,
     branch_target_opcodes: Opcodes<BranchTargetOpcode>,
     call_id_opcodes: Opcodes<CallIdOpcode>,
-    switch_opcodes: Opcodes<SwitchOpcode>,
+    // switch_opcodes: Opcodes<SwitchOpcode>,
 }
 
 impl AllOpcodes {
@@ -168,7 +180,7 @@ impl AllOpcodes {
             branch_opcodes: Opcodes::new(),
             branch_target_opcodes: Opcodes::new(),
             call_id_opcodes: Opcodes::new(),
-            switch_opcodes: Opcodes::new(),
+            // switch_opcodes: Opcodes::new(),
         }
     }
 }
@@ -344,22 +356,22 @@ fn instruction_call<'a>(
     }
 }
 
-fn instruction_switch<'a>(
-    opcodes: &'a Opcodes<SwitchOpcode>,
-) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
-    move |input: &'a str| {
-        let (input, (_, register, identifier, amount)) = tuple((
-            opcode(opcodes),
-            preceded(space1, register),
-            preceded(space1, identifier),
-            preceded(space1, u8),
-        ))(input)?;
-        Ok((
-            input,
-            InstructionNode::UnresolvedSwitch(register, identifier.to_string(), amount),
-        ))
-    }
-}
+// fn instruction_switch<'a>(
+//     opcodes: &'a Opcodes<SwitchOpcode>,
+// ) -> impl Fn(&'a str) -> ParseResult<'a, InstructionNode> {
+//     move |input: &'a str| {
+//         let (input, (_, register, identifier, amount)) = tuple((
+//             opcode(opcodes),
+//             preceded(space1, register),
+//             preceded(space1, identifier),
+//             preceded(space1, u8),
+//         ))(input)?;
+//         Ok((
+//             input,
+//             InstructionNode::UnresolvedSwitch(register, identifier.to_string(), amount),
+//         ))
+//     }
+// }
 
 fn end_of_line(input: &str) -> ParseResult<()> {
     if input.is_empty() {
@@ -397,7 +409,7 @@ fn instruction<'a>(
             instruction_branch(&opcodes.branch_opcodes),
             instruction_target(&opcodes.branch_target_opcodes),
             instruction_call(&opcodes.call_id_opcodes),
-            instruction_switch(&opcodes.switch_opcodes),
+            // instruction_switch(&opcodes.switch_opcodes),
         ))(input)
     }
 }
@@ -1070,47 +1082,47 @@ mod tests {
         )
     }
 
-    #[test]
-    fn test_parse_program_with_switch() {
-        let r = parse_program(
-            "func foo { switch r1 bar1 2\n }\n func bar1 { r1 = add r2 r5\n }\n func bar2 { r1 = add r2 r5\n }",
-        );
-        assert_eq!(
-            r,
-            Ok(Program::from_functions(vec![
-                Function::new(
-                    "foo".to_string(),
-                    &[Instruction::Switch(Switch {
-                        opcode: SwitchOpcode::Switch,
-                        rs: 1,
-                        identifier: 1,
-                        amount: 2
-                    }),],
-                    0
-                ),
-                Function::new(
-                    "bar1".to_string(),
-                    &[Instruction::Register(Register {
-                        opcode: RegisterOpcode::Add,
-                        rd: 1,
-                        rs1: 2,
-                        rs2: 5
-                    })],
-                    0
-                ),
-                Function::new(
-                    "bar2".to_string(),
-                    &[Instruction::Register(Register {
-                        opcode: RegisterOpcode::Add,
-                        rd: 1,
-                        rs1: 2,
-                        rs2: 5
-                    })],
-                    0
-                )
-            ]))
-        )
-    }
+    // #[test]
+    // fn test_parse_program_with_switch() {
+    //     let r = parse_program(
+    //         "func foo { switch r1 bar1 2\n }\n func bar1 { r1 = add r2 r5\n }\n func bar2 { r1 = add r2 r5\n }",
+    //     );
+    //     assert_eq!(
+    //         r,
+    //         Ok(Program::from_functions(vec![
+    //             Function::new(
+    //                 "foo".to_string(),
+    //                 &[Instruction::Switch(Switch {
+    //                     opcode: SwitchOpcode::Switch,
+    //                     rs: 1,
+    //                     identifier: 1,
+    //                     amount: 2
+    //                 }),],
+    //                 0
+    //             ),
+    //             Function::new(
+    //                 "bar1".to_string(),
+    //                 &[Instruction::Register(Register {
+    //                     opcode: RegisterOpcode::Add,
+    //                     rd: 1,
+    //                     rs1: 2,
+    //                     rs2: 5
+    //                 })],
+    //                 0
+    //             ),
+    //             Function::new(
+    //                 "bar2".to_string(),
+    //                 &[Instruction::Register(Register {
+    //                     opcode: RegisterOpcode::Add,
+    //                     rd: 1,
+    //                     rs1: 2,
+    //                     rs2: 5
+    //                 })],
+    //                 0
+    //             )
+    //         ]))
+    //     )
+    // }
 
     #[test]
     fn test_parse_program_with_repeat() {
